@@ -30,10 +30,12 @@ from app.viz.contract import ArtifactMeta, UiPayload
 from app.viz.theme import (
     BAR_FILL_PRIMARY,
     BAR_TRACK,
+    CARD_WRAPPER,
     HEADER_BORDER,
+    TILE_PRIMARY,
+    TILE_PRIMARY_SOLID,
     TILE_ROSE,
-    TILE_TEAL,
-    TILE_TEAL_DARK,
+    TILE_SECONDARY,
 )
 from app.viz.utils.html import assert_safe_html, escape_html, svg_donut
 from app.viz.utils.identifiers import make_identifier
@@ -78,7 +80,7 @@ def build(
         )
     )
 
-    raw = f"""<div class="p-4 font-sans text-gray-900 space-y-4">
+    raw = f"""<div class="{CARD_WRAPPER} space-y-4">
   <header class="{HEADER_BORDER} pb-2">
     <h2 class="text-base font-semibold">{escape_html(title)}</h2>
     <p class="text-xs text-gray-500">Source: ClinicalTrials.gov</p>
@@ -138,10 +140,10 @@ def _render_stat_tiles(
         return ""
 
     tiles = [
-        ("Total Trials", total_trials, "teal_dark"),
-        ("Phases", distinct_phases, "teal"),
-        ("Recruiting", recruiting, "teal_dark"),
-        ("Sponsors", sponsor_count, "rose"),
+        ("Total Trials", total_trials, "primary_solid"),
+        ("Phases", distinct_phases, "primary"),
+        ("Recruiting", recruiting, "secondary"),
+        ("Sponsors", sponsor_count, "primary"),
     ]
     rendered = "\n    ".join(_tile(label, value, color) for label, value, color in tiles)
     return f"""<section>
@@ -154,8 +156,9 @@ def _render_stat_tiles(
 
 def _tile(label: str, value: int, color: str) -> str:
     color_classes = {
-        "teal": TILE_TEAL,
-        "teal_dark": TILE_TEAL_DARK,
+        "primary": TILE_PRIMARY,
+        "primary_solid": TILE_PRIMARY_SOLID,
+        "secondary": TILE_SECONDARY,
         "rose": TILE_ROSE,
     }.get(color, "bg-gray-50 text-gray-700 border-gray-200")
     display = f"{value:,}".replace(",", ".") if isinstance(value, int) else "—"

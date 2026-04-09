@@ -17,6 +17,7 @@ from app.viz.theme import (
     BADGE_MUTED,
     BADGE_NCT,
     BADGE_PMID,
+    CARD_WRAPPER,
     PILL_PHASE,
 )
 from app.viz.utils.html import assert_safe_html, escape_html
@@ -44,10 +45,12 @@ def build(
     footer_html = _render_more_footer(more, data.get("search_url")) if more > 0 else ""
 
     raw = (
-        f'<div class="grid gap-3 p-4 font-sans text-gray-900">\n'
-        f'{cards_html}\n'
-        f'{footer_html}'
-        f'</div>'
+        f'<div class="{CARD_WRAPPER}">\n'
+        f'<div class="grid gap-3">\n'
+        f"{cards_html}\n"
+        f"{footer_html}"
+        f"</div>\n"
+        f"</div>"
     )
 
     assert_safe_html(raw)

@@ -27,13 +27,15 @@ from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
 from app.viz.theme import (
+    CARD_WRAPPER,
     HEADER_BORDER,
     SIGNAL_CARD,
     SIGNAL_ICON_COLOR,
     TILE_MUTED,
+    TILE_PRIMARY,
+    TILE_PRIMARY_SOLID,
     TILE_ROSE,
-    TILE_TEAL,
-    TILE_TEAL_DARK,
+    TILE_SECONDARY,
 )
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
@@ -57,7 +59,7 @@ def build(
     stat_tiles = _render_stat_tiles(phase_counts, status_counts, pubs_3yr, fda_count)
     signals_html = _render_signals(signals)
 
-    raw = f"""<div class="p-4 font-sans text-gray-900 space-y-4">
+    raw = f"""<div class="{CARD_WRAPPER} space-y-4">
   <header class="{HEADER_BORDER} pb-2">
     <h2 class="text-base font-semibold">{escape_html(title)}</h2>
     <p class="text-xs text-gray-500">Source: ClinicalTrials.gov · PubMed · openFDA</p>
@@ -93,11 +95,11 @@ def _render_stat_tiles(
 ) -> str:
     """Top row: 6 stat tiles. Phases 1/2/3, recruiting, publications, FDA labels."""
     tiles = [
-        ("Phase 1", phase_counts.get("phase_1"), "teal"),
-        ("Phase 2", phase_counts.get("phase_2"), "teal"),
-        ("Phase 3", phase_counts.get("phase_3"), "teal_dark"),
-        ("Recruiting", status_counts.get("recruiting"), "teal_dark"),
-        ("Publications (3y)", pubs_3yr, "rose"),
+        ("Phase 1", phase_counts.get("phase_1"), "primary"),
+        ("Phase 2", phase_counts.get("phase_2"), "primary"),
+        ("Phase 3", phase_counts.get("phase_3"), "primary_solid"),
+        ("Recruiting", status_counts.get("recruiting"), "secondary"),
+        ("Publications (3y)", pubs_3yr, "secondary"),
         ("FDA labels", fda_count, "muted"),
     ]
     rendered = "\n    ".join(_tile(label, value, color) for label, value, color in tiles)
@@ -111,8 +113,9 @@ def _render_stat_tiles(
 
 def _tile(label: str, value: Any, color: str) -> str:
     color_classes = {
-        "teal": TILE_TEAL,
-        "teal_dark": TILE_TEAL_DARK,
+        "primary": TILE_PRIMARY,
+        "primary_solid": TILE_PRIMARY_SOLID,
+        "secondary": TILE_SECONDARY,
         "rose": TILE_ROSE,
         "muted": TILE_MUTED,
     }.get(color, TILE_MUTED)
