@@ -27,6 +27,7 @@ from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
 from app.viz.theme import (
+    CARD_STYLE_BLOCK,
     CARD_WRAPPER,
     HEADER_BORDER,
     SIGNAL_CARD,
@@ -59,7 +60,8 @@ def build(
     stat_tiles = _render_stat_tiles(phase_counts, status_counts, pubs_3yr, fda_count)
     signals_html = _render_signals(signals)
 
-    raw = f"""<div class="{CARD_WRAPPER} space-y-4">
+    raw = f"""{CARD_STYLE_BLOCK}
+<div class="{CARD_WRAPPER} space-y-4">
   <header class="{HEADER_BORDER} pb-2">
     <h2 class="text-base font-semibold">{escape_html(title)}</h2>
     <p class="text-xs text-gray-500">Source: ClinicalTrials.gov · PubMed · openFDA</p>

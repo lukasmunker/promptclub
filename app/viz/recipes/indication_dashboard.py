@@ -30,6 +30,7 @@ from app.viz.contract import ArtifactMeta, UiPayload
 from app.viz.theme import (
     BAR_FILL_PRIMARY,
     BAR_TRACK,
+    CARD_STYLE_BLOCK,
     CARD_WRAPPER,
     HEADER_BORDER,
     TILE_PRIMARY,
@@ -80,7 +81,8 @@ def build(
         )
     )
 
-    raw = f"""<div class="{CARD_WRAPPER} space-y-4">
+    raw = f"""{CARD_STYLE_BLOCK}
+<div class="{CARD_WRAPPER} space-y-4">
   <header class="{HEADER_BORDER} pb-2">
     <h2 class="text-base font-semibold">{escape_html(title)}</h2>
     <p class="text-xs text-gray-500">Source: ClinicalTrials.gov</p>

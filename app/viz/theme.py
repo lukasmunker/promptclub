@@ -62,17 +62,76 @@ ALERT_HEX = "#e11d48"
 
 
 CARD_WRAPPER = (
-    "bg-white text-gray-900 rounded-lg ring-1 ring-[#179E75]/20 "
-    "p-4 font-sans"
+    "pharmafuse-card bg-white text-gray-900 rounded-lg "
+    "ring-1 ring-[#179E75]/20 p-4 font-sans"
 )
-"""Outer ``<div>`` class for every HTML recipe. The explicit ``bg-white``
-is critical: LibreChat's artifact side pane honors the user's light/dark
-preference, so without a forced background our ``text-gray-900`` title
-would sit on a dark surface and become unreadable. The ring uses the
-[Company] primary with 20% alpha for a subtle branded border.
+"""Outer ``<div>`` class for every HTML recipe. Combines the
+``pharmafuse-card`` hook class (used by the scoped style block below)
+with Tailwind utilities. The ring uses the [Company] primary at 20%
+alpha for a subtle branded border.
 
-Every HTML recipe's outermost div should use this class — append
+Every HTML recipe's outermost div uses this class — append
 ``space-y-4`` / ``space-y-6`` / layout utilities after."""
+
+
+CARD_STYLE_BLOCK = """<style>
+  /* Pharmafuse artifact override — forces a light theme regardless of
+     LibreChat's dark-mode CSS. Uses !important to beat any ambient
+     prefers-color-scheme overrides the artifact iframe might inherit. */
+  .pharmafuse-card,
+  .pharmafuse-card * {
+    -webkit-text-fill-color: initial;
+  }
+  .pharmafuse-card {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+  }
+  .pharmafuse-card h1,
+  .pharmafuse-card h2 {
+    color: #064d36 !important;
+  }
+  .pharmafuse-card h3 {
+    color: #111827 !important;
+  }
+  .pharmafuse-card p,
+  .pharmafuse-card td,
+  .pharmafuse-card th,
+  .pharmafuse-card li,
+  .pharmafuse-card span,
+  .pharmafuse-card div {
+    color: inherit;
+  }
+  .pharmafuse-card .text-gray-500 { color: #6b7280 !important; }
+  .pharmafuse-card .text-gray-600 { color: #4b5563 !important; }
+  .pharmafuse-card .text-gray-700 { color: #374151 !important; }
+  .pharmafuse-card .text-gray-400 { color: #9ca3af !important; }
+  .pharmafuse-card .text-rose-900 { color: #881337 !important; }
+  .pharmafuse-card .text-rose-700 { color: #be123c !important; }
+  .pharmafuse-card .text-rose-600 { color: #e11d48 !important; }
+  .pharmafuse-card a { color: #179E75 !important; }
+  .pharmafuse-card pre,
+  .pharmafuse-card code {
+    background-color: #f9fafb !important;
+    color: #111827 !important;
+  }
+</style>"""
+"""Scoped CSS block that recipes prepend to their raw HTML. Uses
+``!important`` rules scoped to the ``.pharmafuse-card`` class so any
+dark-mode override LibreChat injects around the artifact iframe cannot
+win. Without this, a user seeing the LibreChat chrome in dark mode
+would get the Tailwind ``bg-white`` class silently overridden by
+``body { background: #0a0a0a }`` or similar, and the titles +
+section headings end up nearly invisible (see April 2026 user
+feedback with the BNT327 trial detail screenshot).
+
+The ``-webkit-text-fill-color: initial`` reset defends against Safari
+dark-mode extensions that force text fill colors independently of the
+``color`` property.
+
+The block is inserted once per artifact — first line of ``ui.raw``.
+It doesn't affect HTML outside a ``.pharmafuse-card`` parent, so it's
+safe even if LibreChat ever mounts multiple artifacts in the same
+document."""
 
 
 # --- Identifier badges (NCT / PMID / gene targets) ------------------------
@@ -252,6 +311,7 @@ __all__ = [
     "ALERT_HEX",
     # Wrapper
     "CARD_WRAPPER",
+    "CARD_STYLE_BLOCK",
     # Badges
     "BADGE_NCT",
     "BADGE_PMID",
