@@ -115,3 +115,55 @@ def test_make_identifier_deterministic():
     fake = datetime(2026, 4, 9, tzinfo=timezone.utc)
     ident = make_identifier("trial_search_results", "melanoma phase 3", clock=fake)
     assert ident == "trial_search_results-melanoma-phase-3-2026-04-09"
+
+
+# --- emoji helpers ---------------------------------------------------------
+
+from app.viz.utils.emoji import (  # noqa: E402
+    format_phase,
+    format_status,
+    phase_emoji,
+    status_emoji,
+)
+
+
+def test_phase_emoji_known_values():
+    assert phase_emoji("Phase 1") == "🔬"
+    assert phase_emoji("Phase 2") == "🧪"
+    assert phase_emoji("Phase 3") == "💊"
+    assert phase_emoji("Phase 4") == "✅"
+    assert phase_emoji("Early Phase 1") == "🔬"
+    assert phase_emoji("PHASE 3") == "💊"  # Case-insensitive
+
+
+def test_phase_emoji_unknown_fallback():
+    assert phase_emoji("Phase 17") == "▫️"
+    assert phase_emoji("") == ""
+    assert phase_emoji(None) == ""
+
+
+def test_format_phase_prefixes_emoji():
+    assert format_phase("Phase 3") == "💊 Phase 3"
+    assert format_phase("Phase 1") == "🔬 Phase 1"
+    assert format_phase(None) == "—"
+    assert format_phase("") == "—"
+
+
+def test_status_emoji_known_values():
+    assert status_emoji("Recruiting") == "🟢"
+    assert status_emoji("Completed") == "⚪"
+    assert status_emoji("Terminated") == "🔴"
+    assert status_emoji("Active, not recruiting") == "🟡"
+    assert status_emoji("Suspended") == "⏸️"
+
+
+def test_status_emoji_unknown_fallback():
+    assert status_emoji("Weird status") == "❔"
+    assert status_emoji(None) == ""
+    assert status_emoji("") == ""
+
+
+def test_format_status_prefixes_emoji():
+    assert format_status("Recruiting") == "🟢 Recruiting"
+    assert format_status("Completed") == "⚪ Completed"
+    assert format_status(None) == "—"

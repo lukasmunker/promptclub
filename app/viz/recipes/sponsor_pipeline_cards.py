@@ -17,9 +17,12 @@ from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
 from app.viz.utils.citations import format_source_footer
+from app.viz.utils.emoji import format_phase, format_status
 from app.viz.utils.identifiers import make_identifier
 
-__all__ = ["build"]
+__all__ = ["build", "BAR_WIDTH"]
+
+BAR_WIDTH = 10  # 0.0 → 1.0 scaled to 10 Unicode block characters
 
 
 def build(
@@ -33,12 +36,22 @@ def build(
 
     groups = _group_trials(trials, group_key)
 
+    # Pre-section overview: ranked sponsor-count table with ASCII bars.
+    # This gives a quick visual sense of *which* sponsor dominates before
+    # the user scrolls through the per-sponsor details below.
+    overview_md = _render_sponsor_ranking(groups)
+
     sections_md = "\n\n".join(
         _render_section(name, items) for name, items in groups.items()
     )
 
     source_footer = format_source_footer(sources)
-    raw = f"## {_md_escape(title)}\n\n{sections_md}\n{source_footer}"
+    raw = (
+        f"## {_md_escape(title)}\n\n"
+        f"{overview_md}"
+        f"{sections_md}\n"
+        f"{source_footer}"
+    )
 
     return UiPayload(
         recipe="sponsor_pipeline_cards",
@@ -93,8 +106,10 @@ def _row(trial: dict[str, Any]) -> str:
     title = trial.get("acronym") or trial.get("title") or "(untitled)"
     title_cell = _md_escape_cell(_truncate(title, 60)) or "—"
 
-    phase = _md_escape_cell(trial.get("phase")) or "—"
-    status = _md_escape_cell(trial.get("status")) or "—"
+    phase_raw = trial.get("phase")
+    phase_cell = _md_escape_cell(format_phase(phase_raw)) if phase_raw else "—"
+    status_raw = trial.get("status")
+    status_cell = _md_escape_cell(format_status(status_raw)) if status_raw else "—"
 
     start = trial.get("start_date")
     end = trial.get("primary_completion_date")
@@ -105,7 +120,46 @@ def _row(trial: dict[str, Any]) -> str:
     else:
         dates_cell = "—"
 
-    return f"| {nct_cell} | {title_cell} | {phase} | {status} | {dates_cell} |"
+    return f"| {nct_cell} | {title_cell} | {phase_cell} | {status_cell} | {dates_cell} |"
+
+
+# --- Sponsor ranking overview (ASCII bars) ---------------------------------
+
+
+def _render_sponsor_ranking(
+    groups: dict[str, list[dict[str, Any]]],
+) -> str:
+    """GFM table of sponsors ranked by trial count, with a visual bar column.
+
+    Returns an empty string when there's only one sponsor (the per-section
+    layout below already makes the point — no need for a 1-row ranking
+    table).
+    """
+    if len(groups) < 2:
+        return ""
+
+    max_count = max((len(items) for items in groups.values()), default=0)
+    if max_count == 0:
+        return ""
+
+    header = (
+        "### Sponsor Ranking\n\n"
+        "| Rank | Sponsor | Trials | Share |\n"
+        "| ---:| --- | ---:| --- |\n"
+    )
+    rows: list[str] = []
+    for idx, (name, items) in enumerate(groups.items(), start=1):
+        count = len(items)
+        # Scale each sponsor's count against the leader (not against the
+        # total) so the leader has a full bar and the bottom sponsor still
+        # shows a visible sliver.
+        ratio = count / max_count if max_count else 0
+        filled = round(ratio * BAR_WIDTH)
+        bar = "█" * filled + "░" * (BAR_WIDTH - filled)
+        rows.append(
+            f"| {idx} | {_md_escape_cell(name)} | {count} | `{bar}` |"
+        )
+    return header + "\n".join(rows) + "\n\n"
 
 
 # --- Escaping helpers ------------------------------------------------------

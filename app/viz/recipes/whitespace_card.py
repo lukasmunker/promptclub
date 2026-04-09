@@ -44,6 +44,10 @@ def build(
     fda_count = data.get("fda_label_records")
     signals = data.get("identified_whitespace") or []
 
+    # Optional phase-distribution pie chart above the metric table.
+    # Only rendered when there are ≥2 phases with non-zero counts — a pie
+    # with one slice is visual noise.
+    phase_pie_md = _render_phase_pie(phase_counts, condition)
     overview_md = _render_overview_table(phase_counts, status_counts, pubs_3yr, fda_count)
     signals_md = _render_signals(signals)
 
@@ -51,6 +55,7 @@ def build(
 
     raw = (
         f"## {_md_escape(title)}\n\n"
+        f"{phase_pie_md}"
         f"### Activity Overview\n\n"
         f"{overview_md}\n"
         f"### Identified Whitespace Signals\n\n"
@@ -151,3 +156,62 @@ def _md_escape_cell(text: object) -> str:
         return ""
     s = str(text).replace("\n", " ").replace("\r", " ").strip()
     return s.replace("|", "\\|")
+
+
+# --- Phase distribution pie chart ------------------------------------------
+
+
+_PHASE_LABELS = {
+    "phase_1": "Phase 1",
+    "phase_2": "Phase 2",
+    "phase_3": "Phase 3",
+    "phase_4": "Phase 4",
+}
+
+
+def _render_phase_pie(
+    phase_counts: dict[str, Any],
+    condition: Any,
+) -> str:
+    """Optional mermaid pie chart showing how trials are distributed across
+    phases. Only emits when ≥2 phases have non-zero counts."""
+    if not phase_counts:
+        return ""
+
+    # Keep only non-zero phases, in a canonical order
+    non_zero: list[tuple[str, int]] = []
+    for key in ("phase_1", "phase_2", "phase_3", "phase_4"):
+        value = phase_counts.get(key)
+        if isinstance(value, (int, float)) and value > 0:
+            non_zero.append((_PHASE_LABELS[key], int(value)))
+    # Include any other custom phase keys the backend might send
+    for key, value in phase_counts.items():
+        if key in ("phase_1", "phase_2", "phase_3", "phase_4"):
+            continue
+        if isinstance(value, (int, float)) and value > 0:
+            label = str(key).replace("_", " ").title()
+            non_zero.append((label, int(value)))
+
+    if len(non_zero) < 2:
+        return ""
+
+    chart_title = _safe_mermaid_label(
+        f"Phase Distribution — {condition}", max_length=80
+    )
+    lines = ["```mermaid", f"pie title {chart_title}"]
+    for label, count in non_zero:
+        safe = _safe_mermaid_label(label, max_length=40)
+        lines.append(f'    "{safe}" : {count}')
+    lines.append("```")
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def _safe_mermaid_label(text: object, max_length: int = 80) -> str:
+    """Strip characters that break mermaid pie label parsing."""
+    if text is None:
+        return "(untitled)"
+    s = str(text).replace('"', "").replace("\n", " ").replace("\r", " ").strip()
+    if len(s) > max_length:
+        s = s[: max_length - 1].rstrip() + "…"
+    return s or "(untitled)"
