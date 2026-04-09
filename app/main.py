@@ -102,6 +102,15 @@ async def search_trials(
         status=status,
         page_size=page_size,
     )
+    empty = _maybe_no_data(
+        result.trials,
+        source="ClinicalTrials.gov v2",
+        query_descriptor=(
+            f"disease={disease_query!r} phase={phase} sponsor={sponsor} status={status}"
+        ),
+    )
+    if empty is not None:
+        return empty
     return lean_dump(result)
 
 

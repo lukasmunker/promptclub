@@ -58,15 +58,14 @@ class PubMedAdapter:
 
         Used by the orchestrator to load the publications a CT.gov trial declares
         in its ``referencesModule.references[].pmid`` list, replacing the
-        regex-over-NCT-in-abstract heuristic. Each returned record is tagged with
-        an ``evidence_path`` indicating it came from this deterministic path.
+        regex-over-NCT-in-abstract heuristic. The orchestrator overwrites
+        ``evidence_path`` on each returned record with the full
+        ``ctgov:NCT... → ctgov.referencesModule.pmid:... → pubmed:...`` chain,
+        so this method intentionally leaves ``evidence_path`` empty.
         """
         if not pmids:
             return []
-        records = await self._fetch_pmids(pmids)
-        for r in records:
-            r.evidence_path = [f"pubmed:{r.pmid}"]
-        return records
+        return await self._fetch_pmids(pmids)
 
     async def _search_pmids(self, query: str, page_size: int) -> list[str]:
         params = {

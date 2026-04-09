@@ -234,6 +234,12 @@ class OpenTargetsAdapter:
                 evidence.append(f"opentargets:drug/{drug_id}")
             evidence.append("opentargets:drugAndClinicalCandidates")
 
+            # row.maxClinicalStage = highest stage for *this* target+drug combo;
+            # drug.maximumClinicalStage = drug's highest stage anywhere across all
+            # targets/indications. Prefer the row-level value (more specific) and
+            # fall back to drug-level when OT does not populate it for this row.
+            max_stage = row.get("maxClinicalStage") or drug.get("maximumClinicalStage")
+
             out.append(
                 KnownDrugRecord(
                     target_id=target_id,
@@ -241,7 +247,7 @@ class OpenTargetsAdapter:
                     drug_id=drug_id,
                     drug_name=drug_name,
                     drug_type=drug.get("drugType"),
-                    max_clinical_stage=row.get("maxClinicalStage") or drug.get("maximumClinicalStage"),
+                    max_clinical_stage=max_stage,
                     trade_names=drug.get("tradeNames") or [],
                     indications=indications,
                     indication_ids=indication_ids,

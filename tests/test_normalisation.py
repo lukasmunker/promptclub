@@ -119,3 +119,104 @@ def test_known_drug_record_minimal():
     assert "raw" not in out
     assert out["drug_name"] == "PEMBROLIZUMAB"
     assert out["evidence_path"][0] == "opentargets:target/ENSG00000188389"
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator branch tests: deterministic linked_pmids vs regex fallback
+# ---------------------------------------------------------------------------
+
+import pytest
+from unittest.mock import AsyncMock
+
+from app.services.orchestration import Orchestrator
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_uses_linked_pmids_when_available():
+    """When CT.gov populates referencesModule.references[].pmid, the orchestrator
+    must call PubMedAdapter.fetch_publications_by_pmids (deterministic) and NOT
+    PubMedAdapter.get_publications_for_trial (regex fallback). Each returned
+    publication must carry the full chain in its evidence_path."""
+    orch = Orchestrator()
+    trial = TrialRecord(
+        source="ClinicalTrials.gov",
+        source_id="NCT01",
+        nct_id="NCT01",
+        linked_pmids=["12345", "67890"],
+    )
+    pub = PublicationRecord(pmid="12345", title="paper-from-references-module")
+
+    orch.ct.search_trials = AsyncMock(return_value=[trial])
+    orch.pubmed.fetch_publications_by_pmids = AsyncMock(return_value=[pub])
+    orch.pubmed.get_publications_for_trial = AsyncMock(return_value=[])
+
+    result = await orch.search_trials_with_publications(disease_query="test")
+
+    orch.pubmed.fetch_publications_by_pmids.assert_called_once_with(["12345", "67890"])
+    orch.pubmed.get_publications_for_trial.assert_not_called()
+    assert len(result.publications) == 1
+    ev = result.publications[0].evidence_path
+    assert "ctgov:NCT01" in ev
+    assert "ctgov.referencesModule.pmid:12345" in ev
+    assert "pubmed:12345" in ev
+    assert "via CT.gov referencesModule" in result.summary
+    assert "1 via CT.gov referencesModule, 0 via abstract regex fallback" in result.summary
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_falls_back_to_regex_when_no_linked_pmids():
+    """When CT.gov has no referencesModule entries (linked_pmids=[]), the
+    orchestrator must fall back to the regex-over-abstract path and tag the
+    resulting publications with the weak-link evidence marker."""
+    orch = Orchestrator()
+    trial = TrialRecord(
+        source="ClinicalTrials.gov",
+        source_id="NCT02",
+        nct_id="NCT02",
+        linked_pmids=[],
+    )
+    pub = PublicationRecord(pmid="99999", title="paper-from-regex-fallback")
+
+    orch.ct.search_trials = AsyncMock(return_value=[trial])
+    orch.pubmed.fetch_publications_by_pmids = AsyncMock(return_value=[])
+    orch.pubmed.get_publications_for_trial = AsyncMock(return_value=[pub])
+
+    result = await orch.search_trials_with_publications(disease_query="test")
+
+    orch.pubmed.fetch_publications_by_pmids.assert_not_called()
+    orch.pubmed.get_publications_for_trial.assert_called_once_with(
+        "NCT02", page_size=5
+    )
+    assert len(result.publications) == 1
+    ev = result.publications[0].evidence_path
+    assert "ctgov:NCT02" in ev
+    assert "pubmed-search:abstract-regex-NCT" in ev
+    assert "pubmed:99999" in ev
+    assert "0 via CT.gov referencesModule, 1 via abstract regex fallback" in result.summary
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_caps_linked_pmids_at_five_and_surfaces_truncation():
+    """Trials with > 5 linked_pmids must (a) only fetch the first 5 and
+    (b) surface the truncation count in the response summary so the LLM can
+    see the cap was applied."""
+    orch = Orchestrator()
+    trial = TrialRecord(
+        source="ClinicalTrials.gov",
+        source_id="NCT03",
+        nct_id="NCT03",
+        linked_pmids=["1", "2", "3", "4", "5", "6", "7"],  # 7 pmids, cap is 5
+    )
+    pubs = [PublicationRecord(pmid=p) for p in ["1", "2", "3", "4", "5"]]
+
+    orch.ct.search_trials = AsyncMock(return_value=[trial])
+    orch.pubmed.fetch_publications_by_pmids = AsyncMock(return_value=pubs)
+    orch.pubmed.get_publications_for_trial = AsyncMock()
+
+    result = await orch.search_trials_with_publications(disease_query="test")
+
+    orch.pubmed.fetch_publications_by_pmids.assert_called_once_with(
+        ["1", "2", "3", "4", "5"]
+    )
+    assert "2 additional pmids omitted" in result.summary
+    assert "capped at 5 per trial" in result.summary
