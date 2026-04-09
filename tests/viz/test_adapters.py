@@ -409,6 +409,7 @@ def test_regulatory_context_skips():
     )
     # Post-Task-10: no recipe wired, but fallback always emits ui
     assert env.get("ui") is not None
+    assert env["ui"]["recipe"] in ("info_card", "concept_card", "single_entity_card")
 
 
 # --- build_trial_comparison adapter (NEW) -----------------------------------
@@ -569,6 +570,7 @@ def test_analyze_indication_landscape_text_only():
     )
     # Post-Task-10: flat aggregate counts route through fallback, ui is always populated
     assert env.get("ui") is not None
+    assert env["ui"]["recipe"] in ("info_card", "concept_card", "single_entity_card")
 
 
 def test_get_sponsor_overview_text_only():
