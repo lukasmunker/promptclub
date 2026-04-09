@@ -7,6 +7,7 @@ implementation detail behind this single function.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from app.viz import render_hints
@@ -14,7 +15,33 @@ from app.viz.contract import Decision, DecisionKind, Envelope, PreferVisualizati
 from app.viz.decision import should_visualize
 from app.viz.recipes import REGISTRY
 
-__all__ = ["build_response"]
+__all__ = ["build_response", "DESIGNER_MODE"]
+
+
+# Pfad B (LLM-as-designer): when this env var is truthy, build_response() skips
+# the Python recipe pipeline entirely and returns an envelope with NO `ui` field.
+# The LLM then constructs the entire visualization (Shadcn/Recharts/Mermaid JSX
+# inside an :::artifact{type=...}::: block) using the brand catalog embedded in
+# the FastMCP system prompt. See app/viz/utils/biontech_brand.py.
+DESIGNER_MODE = os.environ.get("VIZ_DESIGNER_MODE", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+
+
+_DESIGNER_RENDER_HINT = (
+    "DESIGNER MODE — construct the visualization yourself per the BIONTECH "
+    "BRAND TOKENS, VISUALIZATION DECISION MATRIX, and SHADCN/RECHARTS/MERMAID "
+    "catalogs in your system instructions. Identify the data shape from the "
+    "tool_name and `data` field, pick the matching artifact type from the "
+    "decision matrix, and emit ONE :::artifact{identifier=\"<slug>\" "
+    "type=\"<mime>\" title=\"<title>\"}:::… ::: block followed by 2–5 sentences "
+    "of analytical summary in BioNTech voice. Cite sources from the `sources` "
+    "field by NCT/PMID/EFO id verbatim. Do NOT make a prose-only reply. "
+    "No forward-looking statements."
+)
 
 
 def build_response(
@@ -50,6 +77,21 @@ def build_response(
         ... )
     """
     normalized_sources = _normalize_sources(sources)
+
+    # Pfad B short-circuit: in designer mode the LLM constructs the artifact
+    # itself, so we return data + sources only and let the system prompt do the
+    # heavy lifting. We still respect prefer_visualization="never" so callers
+    # that explicitly want a text answer (e.g. no_data envelopes) get one.
+    if DESIGNER_MODE and prefer_visualization != "never":
+        envelope = Envelope(
+            render_hint=(
+                f"{_DESIGNER_RENDER_HINT}\n\n(tool_name={tool_name!r})"
+            ),
+            ui=None,
+            data=data,
+            sources=normalized_sources,
+        )
+        return _serialize(envelope)
 
     decision = should_visualize(tool_name, data, prefer_visualization)
 
