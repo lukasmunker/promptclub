@@ -25,7 +25,7 @@ async def search_trials(
     """
     Search oncology trial records from ClinicalTrials.gov and enrich them with linked PubMed publications.
     """
-    result = await orchestrator.compare_trials(
+    result = await orchestrator.search_trials_with_publications(
         disease_query=disease_query,
         phase=phase,
         sponsor=sponsor,
@@ -39,7 +39,7 @@ async def get_trial_details(nct_id: str) -> dict[str, Any]:
     """
     Fetch a single trial record by NCT ID from ClinicalTrials.gov.
     """
-    record = await orchestrator.ct.get_trial(nct_id)
+    record = await orchestrator.get_trial_details(nct_id)
     if not record:
         return {"found": False, "nct_id": nct_id}
     return {"found": True, "trial": record.model_dump()}
@@ -50,7 +50,7 @@ async def search_publications(query: str, page_size: int = 10) -> dict[str, Any]
     """
     Search PubMed for publications relevant to a disease, therapy, sponsor, or NCT ID.
     """
-    pubs = await orchestrator.pubmed.search_publications(query=query, page_size=page_size)
+    pubs = await orchestrator.search_publications(query=query, page_size=page_size)
     return {"count": len(pubs), "results": [p.model_dump() for p in pubs]}
 
 
@@ -73,6 +73,27 @@ async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
+    """
+    Resolve a free-text disease name to Open Targets disease IDs (EFO ontology).
+    Use before get_target_context when you only have a disease name, not an EFO ID.
+    """
+    rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
+    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+
+
+@mcp.tool()
+async def web_context_search(query: str) -> dict[str, Any]:
+    """
+    Search public web sources via Vertex AI Google Search grounding.
+    Use for recent news, press releases, or context not covered by structured databases.
+    Requires GCP Vertex AI credentials (gracefully disabled if unavailable).
+    """
+    rows = await orchestrator.web_context(query=query)
+    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+
+
+@mcp.tool()
 async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
     """
     Run live health checks against all configured data sources.
@@ -87,6 +108,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+
+@app.get("/")
+async def root():
+    base = settings.public_base_url or ""
+    return {
+        "service": settings.app_name,
+        "status": "ok",
+        "mcp_endpoint": f"{base}/mcp",
+        "health_url": f"{base}/health",
+    }
 
 
 @app.get("/health")
@@ -104,5 +136,7 @@ async def health_sources():
     return {"results": [r.model_dump() for r in results]}
 
 
-# Mount the MCP ASGI app at /mcp
-app.mount("/mcp", mcp.streamable_http_app())
+# Mount at "/" so FastMCP's internal /mcp route is reachable at /mcp externally.
+# FastMCP registers its handler at path "/mcp" inside the sub-app, so mounting
+# at "/mcp" would make it double-nested (/mcp/mcp). Mounting at "/" is correct.
+app.mount("/", mcp.streamable_http_app())
