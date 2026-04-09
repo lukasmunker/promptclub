@@ -12,6 +12,7 @@ from app.services.orchestration import Orchestrator
 from app.settings import settings
 from app.utils import lean_dump
 from app.viz.adapters import build_response_from_promptclub
+from app.viz.build import build_response
 from app.viz.mcp_output import envelope_to_llm_text
 
 
@@ -167,30 +168,6 @@ COMPLIANCE
 )
 
 
-def _maybe_no_data(rows: list[Any], source: str, query_descriptor: str) -> str | None:
-    """Return a pre-formatted ``[NO DATA AVAILABLE]`` tool-text string when
-    ``rows`` is empty, or ``None`` if the caller should proceed with normal
-    envelope building.
-
-    The returned string goes through ``envelope_to_llm_text`` via the legacy
-    no-data dict shape so every MCP tool emits the same format regardless of
-    which path it took.
-    """
-    if rows:
-        return None
-    return envelope_to_llm_text(
-        {
-            "no_data": True,
-            "source": source,
-            "query": query_descriptor,
-            "do_not_supplement": (
-                f"No records were found in {source} for {query_descriptor!r}. "
-                "Tell the user no data is available; do NOT answer from training knowledge."
-            ),
-        }
-    )
-
-
 @mcp.tool()
 async def search_trials(
     disease_query: str,
@@ -222,15 +199,18 @@ async def search_trials(
         status=status,
         page_size=page_size,
     )
-    empty = _maybe_no_data(
-        result.trials,
-        source="ClinicalTrials.gov v2",
-        query_descriptor=(
-            f"disease={disease_query!r} phase={phase} sponsor={sponsor} status={status}"
-        ),
-    )
-    if empty is not None:
-        return empty
+    if not result.trials:
+        envelope = build_response(
+            tool_name="search_trials",
+            data={"count": 0, "results": [], "trials": []},
+            sources=[],
+            prefer_visualization=prefer_visualization,
+            query_hint=(
+                f"disease={disease_query!r} phase={phase} "
+                f"sponsor={sponsor} status={status}"
+            ),
+        )
+        return envelope_to_llm_text(envelope)
     viz = build_response_from_promptclub(
         tool_name="search_trials",
         promptclub_data=lean_dump(result),
@@ -286,9 +266,15 @@ async def search_publications(
     Artifact side pane. Paste the artifact block verbatim into your reply.
     """
     pubs = await orchestrator.search_publications(query=query, page_size=page_size)
-    empty = _maybe_no_data(pubs, source="PubMed", query_descriptor=query)
-    if empty is not None:
-        return empty
+    if not pubs:
+        envelope = build_response(
+            tool_name="search_publications",
+            data={"count": 0, "results": []},
+            sources=[],
+            prefer_visualization=prefer_visualization,
+            query_hint=query,
+        )
+        return envelope_to_llm_text(envelope)
     viz = build_response_from_promptclub(
         tool_name="search_publications",
         promptclub_data={
@@ -319,9 +305,15 @@ async def get_target_context(
     Paste the artifact block verbatim into your reply.
     """
     rows = await orchestrator.get_target_context(disease_id=disease_id)
-    empty = _maybe_no_data(rows, source="Open Targets", query_descriptor=f"disease_id={disease_id}")
-    if empty is not None:
-        return empty
+    if not rows:
+        envelope = build_response(
+            tool_name="get_target_context",
+            data={"count": 0, "results": []},
+            sources=[],
+            prefer_visualization=prefer_visualization,
+            query_hint=f"disease_id={disease_id}",
+        )
+        return envelope_to_llm_text(envelope)
     viz = build_response_from_promptclub(
         tool_name="get_target_context",
         promptclub_data={
@@ -357,12 +349,14 @@ async def get_known_drugs_for_target(ensembl_id: str, page_size: int = 25) -> st
     rows = await orchestrator.get_known_drugs_for_target(
         ensembl_id=ensembl_id, page_size=page_size
     )
-    empty = _maybe_no_data(
-        rows, source="Open Targets drugAndClinicalCandidates",
-        query_descriptor=f"ensembl_id={ensembl_id}",
-    )
-    if empty is not None:
-        return empty
+    if not rows:
+        envelope = build_response(
+            tool_name="get_known_drugs_for_target",
+            data={"count": 0, "results": []},
+            sources=[],
+            query_hint=f"ensembl_id={ensembl_id}",
+        )
+        return envelope_to_llm_text(envelope)
     # No recipe yet for this tool — build a minimal envelope so the LLM
     # receives the standard ``[NO VISUALIZATION]`` wrapper instead of a
     # raw dict it would have to JSON-parse.
@@ -391,9 +385,14 @@ async def get_regulatory_context(drug_name: str) -> str:
     Returns plain text (no visualization). Cite sources by openFDA application number.
     """
     rows = await orchestrator.get_regulatory_context(drug_name=drug_name)
-    empty = _maybe_no_data(rows, source="openFDA", query_descriptor=f"drug_name={drug_name}")
-    if empty is not None:
-        return empty
+    if not rows:
+        envelope = build_response(
+            tool_name="get_regulatory_context",
+            data={"count": 0, "results": []},
+            sources=[],
+            query_hint=f"drug_name={drug_name}",
+        )
+        return envelope_to_llm_text(envelope)
     viz = build_response_from_promptclub(
         tool_name="get_regulatory_context",
         promptclub_data={
@@ -418,9 +417,14 @@ async def resolve_disease(query: str, page_size: int = 5) -> str:
     Returns plain text (no visualization).
     """
     rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
-    empty = _maybe_no_data(rows, source="Open Targets disease ontology", query_descriptor=query)
-    if empty is not None:
-        return empty
+    if not rows:
+        envelope = build_response(
+            tool_name="resolve_disease",
+            data={"count": 0, "results": []},
+            sources=[],
+            query_hint=query,
+        )
+        return envelope_to_llm_text(envelope)
     viz = build_response_from_promptclub(
         tool_name="resolve_disease",
         promptclub_data={
