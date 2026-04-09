@@ -31,12 +31,15 @@ from app.viz.theme import (
     BAR_FILL_PRIMARY,
     BAR_TRACK,
     CARD_STYLE_BLOCK,
+    CARD_STYLE_INLINE,
     CARD_WRAPPER,
     HEADER_BORDER,
+    SUBTITLE_STYLE_INLINE,
     TILE_PRIMARY,
     TILE_PRIMARY_SOLID,
     TILE_ROSE,
     TILE_SECONDARY,
+    TITLE_STYLE_INLINE,
 )
 from app.viz.utils.html import assert_safe_html, escape_html, svg_donut
 from app.viz.utils.identifiers import make_identifier
@@ -82,10 +85,10 @@ def build(
     )
 
     raw = f"""{CARD_STYLE_BLOCK}
-<div class="{CARD_WRAPPER} space-y-4">
+<div class="{CARD_WRAPPER} space-y-4" style="{CARD_STYLE_INLINE}">
   <header class="{HEADER_BORDER} pb-2">
-    <h2 class="text-base font-semibold">{escape_html(title)}</h2>
-    <p class="text-xs text-gray-500">Source: ClinicalTrials.gov</p>
+    <h2 class="text-base font-semibold" style="{TITLE_STYLE_INLINE}">{escape_html(title)}</h2>
+    <p class="text-xs text-gray-500" style="{SUBTITLE_STYLE_INLINE}">Source: ClinicalTrials.gov</p>
   </header>
   {body_html}
 </div>"""

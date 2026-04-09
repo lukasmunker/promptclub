@@ -32,9 +32,12 @@ from app.viz.theme import (
     BAR_FILL_PRIMARY,
     BAR_TRACK,
     CARD_STYLE_BLOCK,
+    CARD_STYLE_INLINE,
     CARD_WRAPPER,
     HEADER_BORDER,
     LINK_SUBTLE,
+    SUBTITLE_STYLE_INLINE,
+    TITLE_STYLE_INLINE,
 )
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
@@ -68,11 +71,11 @@ def build(
     )
 
     raw = f"""{CARD_STYLE_BLOCK}
-<div class="{CARD_WRAPPER}">
+<div class="{CARD_WRAPPER}" style="{CARD_STYLE_INLINE}">
   <header class="mb-3 flex items-baseline justify-between {HEADER_BORDER} pb-2">
     <div>
-      <h2 class="text-base font-semibold">{escape_html(title)}</h2>
-      <p class="text-xs text-gray-500">Source: Open Targets · Disease ID <span class="font-mono">{escape_html(disease_id)}</span></p>
+      <h2 class="text-base font-semibold" style="{TITLE_STYLE_INLINE}">{escape_html(title)}</h2>
+      <p class="text-xs text-gray-500" style="{SUBTITLE_STYLE_INLINE}">Source: Open Targets · Disease ID <span class="font-mono">{escape_html(disease_id)}</span></p>
     </div>
     <a href="{opentargets_url}" target="_blank" rel="noopener"
        class="{LINK_SUBTLE}">View on Open Targets →</a>
