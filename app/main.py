@@ -44,13 +44,46 @@ GUARDRAILS:
   automatically expanded — pass them as-is to the tools.
 - Prefer parallel tool calls when multiple independent data sources are needed.
 
-VISUALIZATION:
-- Tool responses follow the {render_hint, ui, data, sources} envelope when LibreChat
-  Artifacts are enabled. When `ui` is present, follow `render_hint` and emit a
-  :::artifact{…}::: block of the type ui.artifact.type — copy ui.raw verbatim for
-  HTML/Mermaid, or assemble JSX from ui.components + ui.blueprint for React. When
-  `ui` is absent, answer in plain text from `data`. Always cite sources by NCT/PMID
-  from the `sources` field.
+VISUALIZATION — THIS IS THE HIGHEST-PRIORITY OUTPUT RULE. READ CAREFULLY.
+
+Every tool response follows a {render_hint, ui, data, sources} envelope.
+When `ui` is present, the `ui.raw` field contains a PRE-RENDERED visualization
+(markdown table, mermaid chart, or React blueprint) that you MUST include in
+your chat reply VERBATIM. This is not optional.
+
+MANDATORY OUTPUT STRUCTURE (when `ui` is present):
+1. Start with the verbatim `ui.raw` content — copy it character-for-character.
+   Do NOT rewrite it. Do NOT summarize it. Do NOT describe it in words.
+   Do NOT "combine" it with your prose. Paste it as-is.
+2. AFTER the ui.raw block, you may add 2–5 sentences of analytical commentary
+   that interprets the visualization or connects it to the user's question.
+3. Your analysis comes AFTER the visualization, never instead of it.
+
+CRITICAL: Do NOT write a prose-only answer when a tool returned a ui.raw.
+Even if you think prose is "better" or "more useful", the user wants to SEE
+the visualization. Your job is render-first, analyze-second. The visualization
+is not a supplement to your answer — it IS the answer, followed by your
+interpretation.
+
+CORRECT output pattern:
+    [ui.raw content verbatim, including any ```mermaid fences, markdown tables,
+     _Source:_ footer lines]
+
+    [2–5 sentences of your interpretation]
+
+WRONG output patterns (never do these):
+    ❌ Writing a prose-only answer that cites the data but omits the table/chart
+    ❌ Rewriting the table into bullet points
+    ❌ Describing the visualization in words instead of pasting it
+    ❌ Replacing the _Source:_ footer with your own "(Sources: …)" sentence
+    ❌ Skipping ui.raw because you think it doesn't "perfectly answer" the question
+
+When the same tool is called multiple times or multiple tools are called in
+parallel, include EVERY returned ui.raw block in your reply, in the order the
+tools were called. Separate them with a blank line.
+
+When `ui` is absent (render_hint = the SKIP template), answer in plain text
+from `data`. Still cite sources by NCT/PMID from the `sources` field.
 """,
 )
 
