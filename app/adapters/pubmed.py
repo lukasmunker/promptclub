@@ -51,6 +51,23 @@ class PubMedAdapter:
     async def get_publications_for_trial(self, nct_id: str, page_size: int = 10) -> list[PublicationRecord]:
         return await self.search_publications(query=f'"{nct_id}"', page_size=page_size)
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
+    async def fetch_publications_by_pmids(self, pmids: list[str]) -> list[PublicationRecord]:
+        """Fetch PubMed records by exact PMID list — deterministic counterpart to
+        ``search_publications`` (which goes through esearch first).
+
+        Used by the orchestrator to load the publications a CT.gov trial declares
+        in its ``referencesModule.references[].pmid`` list, replacing the
+        regex-over-NCT-in-abstract heuristic. Each returned record is tagged with
+        an ``evidence_path`` indicating it came from this deterministic path.
+        """
+        if not pmids:
+            return []
+        records = await self._fetch_pmids(pmids)
+        for r in records:
+            r.evidence_path = [f"pubmed:{r.pmid}"]
+        return records
+
     async def _search_pmids(self, query: str, page_size: int) -> list[str]:
         params = {
             "db": "pubmed",
