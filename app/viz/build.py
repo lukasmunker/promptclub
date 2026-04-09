@@ -7,8 +7,12 @@ implementation detail behind this single function.
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any
 
+from app.knowledge.oncology.loader import load_lexicon
+from app.knowledge.oncology.schema import Lexicon
+from app.services.enrichment import enrich
 from app.viz import coverage_log
 from app.viz import render_hints
 from app.viz.contract import Decision, DecisionKind, Envelope, PreferVisualization, Source
@@ -17,6 +21,12 @@ from app.viz.fallback import build_fallback_data, pick_fallback_recipe
 from app.viz.recipes import REGISTRY
 
 __all__ = ["build_response"]
+
+
+@lru_cache(maxsize=1)
+def _lexicon() -> Lexicon:
+    """Lazy singleton — loaded once on first build_response() call."""
+    return load_lexicon()
 
 
 def build_response(
@@ -50,9 +60,14 @@ def build_response(
     fallback_used = False
     fallback_reason = ""
 
+    # Enrich the data dict with knowledge annotations BEFORE choosing
+    # a recipe. The enriched dict carries a top-level
+    # ``knowledge_annotations`` field that recipes can opt into.
+    enriched_data = enrich(data, _lexicon())
+
     if decision.kind == DecisionKind.USE and decision.recipe in REGISTRY:
         recipe_name = decision.recipe
-        recipe_data = data
+        recipe_data = enriched_data
     else:
         # Fallback path — guaranteed to produce a recipe
         fallback_used = True
@@ -60,11 +75,11 @@ def build_response(
             decision.reason if decision.kind == DecisionKind.SKIP
             else f"primary recipe '{decision.recipe}' not in REGISTRY"
         )
-        recipe_name = pick_fallback_recipe(tool_name, data, query_hint)
+        recipe_name = pick_fallback_recipe(tool_name, enriched_data, query_hint)
         recipe_data = build_fallback_data(
             recipe_name=recipe_name,
             tool_name=tool_name,
-            original_data=data,
+            original_data=enriched_data,
             query_hint=query_hint,
         )
 
@@ -74,7 +89,7 @@ def build_response(
     envelope = Envelope(
         render_hint=render_hints.for_artifact_type(ui.artifact.type),
         ui=ui,
-        data=data,  # original data preserved for downstream consumers
+        data=enriched_data,  # carries knowledge_annotations
         sources=normalized_sources,
     )
     serialized = _serialize(envelope)
