@@ -224,6 +224,10 @@ class Orchestrator:
             return_exceptions=True,
         )
 
+        # asyncio.gather flattens to: [phase_1, phase_2, phase_3,
+        #                              status_recruiting, status_completed,
+        #                              pubmed_count, fda_count]
+        # → length 7, indices 0..6
         phase_counts = {
             f"phase_{p}": (results[i] if not isinstance(results[i], Exception) else 0)
             for i, p in enumerate(phases)
@@ -232,8 +236,8 @@ class Orchestrator:
             s: (results[3 + i] if not isinstance(results[3 + i], Exception) else 0)
             for i, s in enumerate(statuses)
         }
-        pub_count = results[6] if not isinstance(results[6], Exception) else 0
-        fda_count = results[7] if not isinstance(results[7], Exception) else 0
+        pub_count = results[5] if not isinstance(results[5], Exception) else 0
+        fda_count = results[6] if not isinstance(results[6], Exception) else 0
 
         gaps: list[str] = []
         if phase_counts.get("phase_1", 0) < 5:
