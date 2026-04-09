@@ -676,3 +676,142 @@ def test_indication_dashboard_embeds_source_footer_blueprint(indication_landscap
     assert footer.component == "p"
     assert "Source:" in footer.text
     assert "ClinicalTrials.gov" in footer.text
+
+
+# --- Emoji decoration + Mermaid pie / bar upgrades --------------------------
+
+
+def test_trial_search_results_uses_phase_and_status_emojis(search_melanoma_phase3):
+    """Every trial row should carry a leading emoji on the phase and status
+    columns (💊 for Phase 3, 🟢 Recruiting, etc.)"""
+    payload = trial_search_results.build(search_melanoma_phase3)
+    # Phase 3 emoji
+    assert "💊 Phase 3" in payload.raw
+    # Recruiting status emoji
+    assert "🟢 Recruiting" in payload.raw
+    # Active, not recruiting emoji
+    assert "🟡 Active, not recruiting" in payload.raw
+
+
+def test_trial_search_results_includes_status_pie_when_multi_status(
+    search_melanoma_phase3,
+):
+    """The fixture has 2 distinct statuses → pie chart above the table."""
+    payload = trial_search_results.build(search_melanoma_phase3)
+    assert "```mermaid" in payload.raw
+    assert "pie title Status breakdown" in payload.raw
+    # Both statuses from the fixture should appear as pie slices
+    assert '"Recruiting"' in payload.raw
+    assert '"Active, not recruiting"' in payload.raw
+    # Pie must sit BEFORE the table (status overview, then details)
+    pie_idx = payload.raw.index("```mermaid")
+    table_idx = payload.raw.index("| NCT | Phase")
+    assert pie_idx < table_idx
+
+
+def test_trial_search_results_skips_pie_when_single_status():
+    """One status → no pie."""
+    data = {
+        "query": "single-status",
+        "results": [
+            {"nct_id": "NCT01", "phase": "Phase 3", "status": "Recruiting"},
+            {"nct_id": "NCT02", "phase": "Phase 3", "status": "Recruiting"},
+        ],
+        "total": 2,
+    }
+    payload = trial_search_results.build(data)
+    assert "```mermaid" not in payload.raw
+    # Still renders the table normally
+    assert "| NCT | Phase" in payload.raw
+
+
+def test_trial_search_results_skips_pie_for_publications():
+    """Publication result sets don't get a status pie (PubMed hits have no
+    status)."""
+    data = {
+        "query": "pubs",
+        "results": [
+            {"pmid": "111", "title": "A"},
+            {"pmid": "222", "title": "B"},
+        ],
+        "total": 2,
+    }
+    payload = trial_search_results.build(data)
+    assert "```mermaid" not in payload.raw
+
+
+def test_sponsor_pipeline_cards_uses_emojis_and_ranking_bar(compare_trials_many):
+    payload = sponsor_pipeline_cards.build(compare_trials_many)
+    # Emoji decoration on phase/status in each row
+    assert "💊 Phase 3" in payload.raw
+    assert "🟢 Recruiting" in payload.raw
+    # Sponsor ranking table appears before the per-sponsor sections
+    assert "### Sponsor Ranking" in payload.raw
+    # Bar characters in the ranking column
+    assert "█" in payload.raw
+    # Ranking table header
+    assert "| Rank | Sponsor | Trials | Share |" in payload.raw
+
+
+def test_sponsor_pipeline_cards_no_ranking_for_single_sponsor():
+    """With only one sponsor the ranking table is pointless — omit it."""
+    data = {
+        "title": "Solo",
+        "query": "solo",
+        "trials": [
+            {"nct_id": "NCT01", "sponsor": "Only One", "phase": "Phase 3"},
+            {"nct_id": "NCT02", "sponsor": "Only One", "phase": "Phase 3"},
+        ],
+    }
+    payload = sponsor_pipeline_cards.build(data)
+    assert "### Sponsor Ranking" not in payload.raw
+    assert "### Only One" in payload.raw  # Per-sponsor section still present
+
+
+def test_whitespace_card_includes_phase_pie():
+    data = {
+        "condition": "non-small cell lung cancer",
+        "trial_counts_by_phase": {"phase_1": 42, "phase_2": 78, "phase_3": 35},
+        "trial_counts_by_status": {"recruiting": 95},
+        "identified_whitespace": ["Few Phase 3 trials"],
+    }
+    payload = whitespace_card.build(data)
+    assert "```mermaid" in payload.raw
+    assert "pie title Phase Distribution" in payload.raw
+    # All three phases appear as pie slices
+    assert '"Phase 1"' in payload.raw
+    assert '"Phase 2"' in payload.raw
+    assert '"Phase 3"' in payload.raw
+    # Values are the raw counts from the fixture
+    assert '"Phase 1" : 42' in payload.raw
+    assert '"Phase 2" : 78' in payload.raw
+    assert '"Phase 3" : 35' in payload.raw
+    # Pie sits BEFORE the Activity Overview section
+    pie_idx = payload.raw.index("```mermaid")
+    overview_idx = payload.raw.index("### Activity Overview")
+    assert pie_idx < overview_idx
+
+
+def test_whitespace_card_no_pie_when_single_phase():
+    """One phase with count → no pie chart."""
+    data = {
+        "condition": "rare",
+        "trial_counts_by_phase": {"phase_3": 5},
+        "identified_whitespace": ["Only Phase 3 activity"],
+    }
+    payload = whitespace_card.build(data)
+    assert "```mermaid" not in payload.raw
+    # But the normal metric table + signal list still render
+    assert "### Activity Overview" in payload.raw
+    assert "Only Phase 3 activity" in payload.raw
+
+
+def test_whitespace_card_no_pie_when_zero_counts():
+    """Phase keys exist but all counts are zero → no pie."""
+    data = {
+        "condition": "empty",
+        "trial_counts_by_phase": {"phase_1": 0, "phase_2": 0, "phase_3": 0},
+        "identified_whitespace": [],
+    }
+    payload = whitespace_card.build(data)
+    assert "```mermaid" not in payload.raw
