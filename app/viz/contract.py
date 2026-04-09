@@ -37,6 +37,9 @@ RecipeName = Literal[
     "sponsor_pipeline_cards",
     "target_associations_table",
     "whitespace_card",
+    "info_card",
+    "concept_card",
+    "single_entity_card",
 ]
 
 
