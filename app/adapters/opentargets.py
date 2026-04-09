@@ -5,7 +5,13 @@ import time
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.models import Citation, DiseaseResolutionRecord, SourceTestResult, TargetAssociationRecord
+from app.models import (
+    Citation,
+    DiseaseResolutionRecord,
+    KnownDrugRecord,
+    SourceTestResult,
+    TargetAssociationRecord,
+)
 from app.settings import settings
 
 
@@ -125,6 +131,139 @@ class OpenTargetsAdapter:
                             id=target.get("id"),
                             url=f"https://platform.opentargets.org/disease/{disease.get('id')}",
                             title=f"{disease.get('name')} target associations",
+                        )
+                    ],
+                    raw=row,
+                )
+            )
+        return out
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
+    async def get_known_drugs_for_target(
+        self, ensembl_id: str, page_size: int = 25
+    ) -> list[KnownDrugRecord]:
+        """Return drugs developed against a target, with the diseases they treat
+        and the trial identifiers from Open Targets ``drugAndClinicalCandidates``.
+
+        This is the deterministic Drug↔Target↔Trial join: each row carries an
+        evidence_path so the LLM never has to guess whether a drug from openFDA
+        and an intervention name from CT.gov refer to the same molecule.
+
+        ``page_size`` is applied client-side; Open Targets does not paginate this
+        field at the GraphQL level for v4 (verified via schema introspection).
+        """
+        gql = """
+        query KnownDrugsForTarget($ensemblId: String!) {
+          target(ensemblId: $ensemblId) {
+            id
+            approvedSymbol
+            drugAndClinicalCandidates {
+              count
+              rows {
+                id
+                maxClinicalStage
+                drug {
+                  id
+                  name
+                  drugType
+                  maximumClinicalStage
+                  tradeNames
+                }
+                diseases {
+                  disease {
+                    id
+                    name
+                  }
+                }
+                clinicalReports {
+                  id
+                  source
+                  trialPhase
+                  trialOverallStatus
+                  url
+                }
+              }
+            }
+          }
+        }
+        """
+        variables = {"ensemblId": ensembl_id}
+
+        async with httpx.AsyncClient(timeout=self.timeout, headers=self.headers) as client:
+            resp = await client.post(self.BASE_URL, json={"query": gql, "variables": variables})
+            resp.raise_for_status()
+            payload = resp.json()
+
+        target = (payload.get("data") or {}).get("target")
+        if not target:
+            return []
+
+        target_id = target.get("id")
+        target_symbol = target.get("approvedSymbol")
+        all_candidates = (target.get("drugAndClinicalCandidates") or {}).get("rows", []) or []
+        # Server returns the full list; clip client-side per page_size.
+        candidates = all_candidates[:page_size]
+
+        out: list[KnownDrugRecord] = []
+        for row in candidates:
+            drug = row.get("drug") or {}
+            drug_id = drug.get("id")
+            drug_name = drug.get("name")
+
+            indications: list[str] = []
+            indication_ids: list[str] = []
+            for d in row.get("diseases", []) or []:
+                d_obj = (d or {}).get("disease") or {}
+                if d_obj.get("name"):
+                    indications.append(d_obj["name"])
+                if d_obj.get("id"):
+                    indication_ids.append(d_obj["id"])
+
+            trial_ids: list[str] = []
+            trial_phases: list[str] = []
+            for rep in row.get("clinicalReports", []) or []:
+                rep_id = rep.get("id")
+                if rep_id:
+                    trial_ids.append(rep_id)
+                phase = rep.get("trialPhase")
+                if phase:
+                    trial_phases.append(phase)
+
+            evidence: list[str] = [f"opentargets:target/{target_id}"]
+            if drug_id:
+                evidence.append(f"opentargets:drug/{drug_id}")
+            evidence.append("opentargets:drugAndClinicalCandidates")
+
+            # row.maxClinicalStage = highest stage for *this* target+drug combo;
+            # drug.maximumClinicalStage = drug's highest stage anywhere across all
+            # targets/indications. Prefer the row-level value (more specific) and
+            # fall back to drug-level when OT does not populate it for this row.
+            max_stage = row.get("maxClinicalStage") or drug.get("maximumClinicalStage")
+
+            out.append(
+                KnownDrugRecord(
+                    target_id=target_id,
+                    target_symbol=target_symbol,
+                    drug_id=drug_id,
+                    drug_name=drug_name,
+                    drug_type=drug.get("drugType"),
+                    max_clinical_stage=max_stage,
+                    trade_names=drug.get("tradeNames") or [],
+                    indications=indications,
+                    indication_ids=indication_ids,
+                    trial_ids=trial_ids,
+                    trial_phases=trial_phases,
+                    evidence_path=evidence,
+                    citations=[
+                        Citation(
+                            source="Open Targets",
+                            id=drug_id,
+                            url=(
+                                f"https://platform.opentargets.org/drug/{drug_id}"
+                                if drug_id
+                                else f"https://platform.opentargets.org/target/{target_id}"
+                            ),
+                            title=drug_name or target_symbol,
                         )
                     ],
                     raw=row,

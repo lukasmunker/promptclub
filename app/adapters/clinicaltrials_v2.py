@@ -189,6 +189,20 @@ class ClinicalTrialsV2Adapter:
             if ref.get("pmid")
         ])
 
+        # Build evidence_path with the singular `ctgov.referencesModule.pmid:`
+        # form (one entry per linked pmid) so it matches the per-publication
+        # provenance entries the orchestrator emits and the pattern documented
+        # in the FastMCP instructions= guardrail. Cap at 5 entries; if more
+        # exist, surface the count via a `_truncated:` marker so the LLM can
+        # tell the trial has more references than the path enumerates.
+        evidence: list[str] = []
+        if nct_id:
+            evidence.append(f"ctgov:{nct_id}")
+        for pmid in linked_pmids[:5]:
+            evidence.append(f"ctgov.referencesModule.pmid:{pmid}")
+        if len(linked_pmids) > 5:
+            evidence.append(f"ctgov.referencesModule.pmid_truncated:{len(linked_pmids) - 5}_more")
+
         return TrialRecord(
             source="ClinicalTrials.gov",
             source_id=nct_id or brief_title or "unknown",
@@ -216,6 +230,7 @@ class ClinicalTrialsV2Adapter:
             keywords=keywords,
             linked_pmids=linked_pmids,
             retrieved_at=datetime.now(timezone.utc).isoformat(),
+            evidence_path=evidence,
             citations=[
                 Citation(
                     source="ClinicalTrials.gov",

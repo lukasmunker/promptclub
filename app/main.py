@@ -7,8 +7,10 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from mcp.server.fastmcp import FastMCP
 
+from app.citations import attach_citation_layer, citations_from_rows
 from app.services.orchestration import Orchestrator
 from app.settings import settings
+from app.utils import lean_dump
 from app.viz.adapters import build_response_from_promptclub
 
 
@@ -32,14 +34,26 @@ ROUTING RULES — choose the right tool for the question:
 - "Tell me about NCT[ID]" → get_trial_details
 - "Find papers / publications about [topic]" → search_publications
 - "What targets are associated with [disease]?" → resolve_disease then get_target_context
+- "Which drugs target gene/protein X and what trials use them?" → get_known_drugs_for_target
 - "Is [drug] FDA approved? / regulatory context" → get_regulatory_context
 - "Latest news / recent developments" → web_context_search
 - "Is the system working?" → test_data_sources
 
-GUARDRAILS:
+GUARDRAILS — these are non-negotiable and audit-grade:
 - Do NOT make forward-looking investment, regulatory, or clinical outcome predictions.
 - Do NOT speculate beyond what the data sources explicitly state.
-- Always surface source citations from the tool response.
+- If a tool result has `no_data: true`, you MUST tell the user no data was found and you
+  MUST NOT supplement the answer with knowledge from your training data. State the gap
+  explicitly: "No records were found in [source] for [query]."
+- Every claim that cites an NCT id, PMID, EFO id, ChEMBL id or URL MUST appear verbatim
+  in the tool output. Do not paraphrase numerical values, dates, or identifiers — quote
+  them as returned. Do not construct URLs from patterns; only cite urls from `citations[]`.
+- Use `evidence_path` (when present on a record) to attribute each claim to a specific
+  data source chain. If two records share an evidence_path, treat them as the same fact.
+- Trial↔Publication links: a publication's evidence_path beginning with `ctgov.referencesModule.pmid:`
+  is a deterministic link declared by the trial sponsor. Treat that as authoritative.
+  A path containing `pubmed-search:abstract-regex-NCT` is a heuristic fallback — flag as
+  "weak link" if you rely on it.
 - Medical abbreviations (NSCLC, HCC, TNBC, etc.) and trade names (Keytruda, Opdivo) are
   automatically expanded — pass them as-is to the tools.
 - Prefer parallel tool calls when multiple independent data sources are needed.
@@ -88,13 +102,31 @@ from `data`. Still cite sources by NCT/PMID from the `sources` field.
 )
 
 
+def _maybe_no_data(rows: list[Any], source: str, query_descriptor: str) -> dict[str, Any] | None:
+    """Return an empty-result envelope with a strong instruction not to supplement
+    from training knowledge. Returns None if rows is non-empty (caller proceeds normally)."""
+    if rows:
+        return None
+    return {
+        "count": 0,
+        "results": [],
+        "no_data": True,
+        "source": source,
+        "query": query_descriptor,
+        "do_not_supplement": (
+            f"No records were found in {source} for {query_descriptor!r}. "
+            "Tell the user no data is available; do NOT answer from training knowledge."
+        ),
+    }
+
+
 @mcp.tool()
 async def search_trials(
     disease_query: str,
     phase: str | None = None,
     sponsor: str | None = None,
     status: str | None = None,
-    page_size: int = 10,
+    page_size: int = 5,
     prefer_visualization: PreferViz = "auto",
 ) -> dict[str, Any]:
     """
@@ -105,7 +137,7 @@ async def search_trials(
       - phase: "1", "2", "3", "phase 3", "PHASE2" (all formats accepted)
       - sponsor: partial sponsor name, e.g. "[Company]", "Merck"
       - status: "recruiting", "completed", "active", "not_yet_recruiting", etc.
-      - page_size: number of results (default 10, max ~100)
+      - page_size: number of results (default 5, max ~100)
 
     Medical abbreviations (NSCLC, HCC, TNBC) and trade names (Keytruda→pembrolizumab) are
     automatically expanded. Returns full trial records with linked PMIDs and citations.
@@ -121,12 +153,22 @@ async def search_trials(
         status=status,
         page_size=page_size,
     )
-    return build_response_from_promptclub(
+    empty = _maybe_no_data(
+        result.trials,
+        source="ClinicalTrials.gov v2",
+        query_descriptor=(
+            f"disease={disease_query!r} phase={phase} sponsor={sponsor} status={status}"
+        ),
+    )
+    if empty is not None:
+        return empty
+    viz = build_response_from_promptclub(
         tool_name="search_trials",
-        promptclub_data=result.model_dump(),
+        promptclub_data=lean_dump(result),
         prefer_visualization=prefer_visualization,
         query=disease_query,
     )
+    return attach_citation_layer(viz, result.citations)
 
 
 @mcp.tool()
@@ -149,12 +191,13 @@ async def get_trial_details(
     if not record:
         promptclub_data: dict[str, Any] = {"found": False, "nct_id": nct_id}
     else:
-        promptclub_data = {"found": True, "trial": record.model_dump()}
-    return build_response_from_promptclub(
+        promptclub_data = {"found": True, "trial": lean_dump(record)}
+    viz = build_response_from_promptclub(
         tool_name="get_trial_details",
         promptclub_data=promptclub_data,
         prefer_visualization=prefer_visualization,
     )
+    return attach_citation_layer(viz, record.citations if record else None)
 
 
 @mcp.tool()
@@ -176,15 +219,19 @@ async def search_publications(
     Cite sources from the sources field. No forward-looking statements.
     """
     pubs = await orchestrator.search_publications(query=query, page_size=page_size)
-    return build_response_from_promptclub(
+    empty = _maybe_no_data(pubs, source="PubMed", query_descriptor=query)
+    if empty is not None:
+        return empty
+    viz = build_response_from_promptclub(
         tool_name="search_publications",
         promptclub_data={
             "count": len(pubs),
-            "results": [p.model_dump() for p in pubs],
+            "results": [lean_dump(p) for p in pubs],
         },
         prefer_visualization=prefer_visualization,
         query=query,
     )
+    return attach_citation_layer(viz, citations_from_rows(pubs))
 
 
 @mcp.tool()
@@ -205,14 +252,50 @@ async def get_target_context(
     Cite sources from the sources field. No forward-looking statements.
     """
     rows = await orchestrator.get_target_context(disease_id=disease_id)
-    return build_response_from_promptclub(
+    empty = _maybe_no_data(rows, source="Open Targets", query_descriptor=f"disease_id={disease_id}")
+    if empty is not None:
+        return empty
+    viz = build_response_from_promptclub(
         tool_name="get_target_context",
         promptclub_data={
             "count": len(rows),
-            "results": [r.model_dump() for r in rows],
+            "results": [lean_dump(r) for r in rows],
         },
         prefer_visualization=prefer_visualization,
         disease_id=disease_id,
+    )
+    return attach_citation_layer(viz, citations_from_rows(rows))
+
+
+@mcp.tool()
+async def get_known_drugs_for_target(ensembl_id: str, page_size: int = 25) -> dict[str, Any]:
+    """
+    Return drugs developed against a target with their indications and trial IDs —
+    the deterministic Drug↔Target↔Trial join from Open Targets `drugAndClinicalCandidates`.
+
+    USE THIS WHEN: The user asks "which drugs target gene X?", "what compounds hit
+    PD-1?", "show me the pipeline for ENSG...", or any question that needs to connect
+    a target/gene/protein to the drugs developed against it AND the trials those drugs
+    appear in. Requires an Ensembl gene ID (e.g. ENSG00000188389 for PDCD1 / PD-1).
+    Each row carries an `evidence_path` documenting the deterministic chain
+    `target → drug → trial`, so the LLM never has to guess whether a drug from
+    openFDA matches an intervention from CT.gov. Use after `get_target_context`
+    when the user wants to drill from disease → targets → drugs → trials.
+
+    Returns a plain dict envelope (no viz recipe yet — viz integration is a follow-up PR).
+    """
+    rows = await orchestrator.get_known_drugs_for_target(
+        ensembl_id=ensembl_id, page_size=page_size
+    )
+    empty = _maybe_no_data(
+        rows, source="Open Targets drugAndClinicalCandidates",
+        query_descriptor=f"ensembl_id={ensembl_id}",
+    )
+    if empty is not None:
+        return empty
+    return attach_citation_layer(
+        {"count": len(rows), "results": [lean_dump(r) for r in rows]},
+        citations_from_rows(rows),
     )
 
 
@@ -230,13 +313,17 @@ async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
     application number. No forward-looking statements.
     """
     rows = await orchestrator.get_regulatory_context(drug_name=drug_name)
-    return build_response_from_promptclub(
+    empty = _maybe_no_data(rows, source="openFDA", query_descriptor=f"drug_name={drug_name}")
+    if empty is not None:
+        return empty
+    viz = build_response_from_promptclub(
         tool_name="get_regulatory_context",
         promptclub_data={
             "count": len(rows),
-            "results": [r.model_dump() for r in rows],
+            "results": [lean_dump(r) for r in rows],
         },
     )
+    return attach_citation_layer(viz, citations_from_rows(rows))
 
 
 @mcp.tool()
@@ -252,13 +339,17 @@ async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
     Returns plain text — no visualization recipe assigned.
     """
     rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
-    return build_response_from_promptclub(
+    empty = _maybe_no_data(rows, source="Open Targets disease ontology", query_descriptor=query)
+    if empty is not None:
+        return empty
+    viz = build_response_from_promptclub(
         tool_name="resolve_disease",
         promptclub_data={
             "count": len(rows),
-            "results": [r.model_dump() for r in rows],
+            "results": [lean_dump(r) for r in rows],
         },
     )
+    return attach_citation_layer(viz, citations_from_rows(rows))
 
 
 @mcp.tool()
@@ -278,15 +369,16 @@ async def web_context_search(
     the artifact described in ui.artifact using ui.raw (HTML card list).
     """
     rows = await orchestrator.web_context(query=query)
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="web_context_search",
         promptclub_data={
             "count": len(rows),
-            "results": [r.model_dump() for r in rows],
+            "results": [lean_dump(r) for r in rows],
         },
         prefer_visualization=prefer_visualization,
         query=query,
     )
+    return attach_citation_layer(viz, citations_from_rows(rows))
 
 
 @mcp.tool()
@@ -298,7 +390,7 @@ async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
     or reports that a data source seems down. Returns latency, status, and sample IDs for each source.
     """
     results = await orchestrator.test_sources(sample_query=sample_query)
-    return {"results": [r.model_dump() for r in results]}
+    return {"results": [lean_dump(r) for r in results]}
 
 
 @mcp.tool()
@@ -466,7 +558,7 @@ async def health():
 @app.get("/health/sources")
 async def health_sources():
     results = await orchestrator.test_sources(sample_query="melanoma")
-    return {"results": [r.model_dump() for r in results]}
+    return {"results": [lean_dump(r) for r in results]}
 
 
 app.mount("/", _mcp_asgi)
