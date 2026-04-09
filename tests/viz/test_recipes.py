@@ -131,9 +131,12 @@ def test_sponsor_pipeline_cards_handles_empty():
 def test_timeline_gantt_basic(compare_trials_three):
     payload = trial_timeline_gantt.build(compare_trials_three)
     assert payload.artifact.type == "mermaid"
-    # Pure mermaid source — no markdown wrapper, no code fence
-    assert payload.raw.startswith("gantt")
-    assert "```mermaid" not in payload.raw
+    # Starts with the Pharmafuse Mermaid theme init directive, then gantt
+    assert payload.raw.startswith("%%{init:")
+    # [Company] brand primary appears in the init block
+    assert "#179E75" in payload.raw
+    assert "\ngantt\n" in payload.raw
+    assert "```mermaid" not in payload.raw  # no code fence wrapping
     assert "dateFormat  YYYY-MM-DD" in payload.raw
     # All three trials should appear in the diagram
     for trial in compare_trials_three["trials"]:
@@ -225,8 +228,11 @@ def test_indication_dashboard_basic(indication_landscape_nsclc):
     assert payload.raw is not None
     assert payload.blueprint is None
     assert payload.components is None
-    # Page container + header present
-    assert '<div class="p-4' in payload.raw
+    # Page container + header present (the [Company]-themed CARD_WRAPPER
+    # forces an explicit bg-white so the artifact renders on a light
+    # background regardless of LibreChat's dark-mode chrome).
+    assert "bg-white" in payload.raw
+    assert "p-4" in payload.raw
     assert "<h2 " in payload.raw
 
 
@@ -556,8 +562,9 @@ def test_build_response_compare_trials_gantt(compare_trials_three):
     )
     assert envelope["ui"]["recipe"] == "trial_timeline_gantt"
     assert envelope["ui"]["artifact"]["type"] == "mermaid"
-    # Pure mermaid — starts with the diagram header directly
-    assert envelope["ui"]["raw"].startswith("gantt")
+    # Starts with the Pharmafuse Mermaid theme init directive
+    assert envelope["ui"]["raw"].startswith("%%{init:")
+    assert "\ngantt\n" in envelope["ui"]["raw"]
     assert "```mermaid" not in envelope["ui"]["raw"]
 
 

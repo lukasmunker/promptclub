@@ -64,18 +64,19 @@ def assert_safe_html(body: str) -> None:
             )
 
 
-# Default donut palette (tailwind 500-shade hexes). Segments beyond index 7
-# wrap around. Keep alphabetically reasonable contrast so small slices stay
-# legible next to the legend.
+# Default donut palette — [Company] brand colors (matching app/viz/theme
+# .DONUT_PALETTE). Re-declared here to avoid a circular import back into
+# app.viz.theme; keep in sync when the brand palette changes. Order puts
+# distinguishable shades first so the common 2-5 slice pies read clearly.
 _DONUT_COLORS = (
-    "#3b82f6",  # blue-500
-    "#10b981",  # emerald-500
-    "#f59e0b",  # amber-500
-    "#8b5cf6",  # violet-500
-    "#ec4899",  # pink-500
-    "#14b8a6",  # teal-500
-    "#f43f5e",  # rose-500
-    "#6366f1",  # indigo-500
+    "#064d36",  # darkest green
+    "#179E75",  # primary [Company] green
+    "#0d7a5a",  # deep green
+    "#6fa312",  # dark lime
+    "#99D11E",  # secondary [Company] lime
+    "#d1eb6e",  # light lime
+    "#e11d48",  # rose accent
+    "#a5e5d9",  # mint fallback
 )
 
 

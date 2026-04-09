@@ -26,6 +26,19 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.theme import (
+    BADGE_MUTED,
+    BADGE_TARGET,
+    BAR_FILL_PRIMARY,
+    BAR_TRACK,
+    CARD_STYLE_BLOCK,
+    CARD_STYLE_INLINE,
+    CARD_WRAPPER,
+    HEADER_BORDER,
+    LINK_SUBTLE,
+    SUBTITLE_STYLE_INLINE,
+    TITLE_STYLE_INLINE,
+)
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
@@ -57,14 +70,15 @@ def build(
         f"https://platform.opentargets.org/disease/{escape_html(disease_id)}"
     )
 
-    raw = f"""<div class="p-4 font-sans text-gray-900">
-  <header class="mb-3 flex items-baseline justify-between border-b border-gray-200 pb-2">
+    raw = f"""{CARD_STYLE_BLOCK}
+<div class="{CARD_WRAPPER}" style="{CARD_STYLE_INLINE}">
+  <header class="mb-3 flex items-baseline justify-between {HEADER_BORDER} pb-2">
     <div>
-      <h2 class="text-base font-semibold">{escape_html(title)}</h2>
-      <p class="text-xs text-gray-500">Source: Open Targets · Disease ID <span class="font-mono">{escape_html(disease_id)}</span></p>
+      <h2 class="text-base font-semibold" style="{TITLE_STYLE_INLINE}">{escape_html(title)}</h2>
+      <p class="text-xs text-gray-500" style="{SUBTITLE_STYLE_INLINE}">Source: Open Targets · Disease ID <span class="font-mono">{escape_html(disease_id)}</span></p>
     </div>
     <a href="{opentargets_url}" target="_blank" rel="noopener"
-       class="text-xs text-blue-700 hover:underline">View on Open Targets →</a>
+       class="{LINK_SUBTLE}">View on Open Targets →</a>
   </header>
   <table class="w-full text-sm">
     <thead>
@@ -109,24 +123,20 @@ def _render_row(assoc: dict[str, Any]) -> str:
         )
         target_badge = (
             f'<a href="{target_url}" target="_blank" rel="noopener" '
-            f'class="font-mono text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 '
-            f'border border-blue-200 hover:bg-blue-100">{escape_html(symbol)}</a>'
+            f'class="{BADGE_TARGET}">{escape_html(symbol)}</a>'
         )
     else:
-        target_badge = (
-            f'<span class="font-mono text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">'
-            f"{escape_html(symbol)}</span>"
-        )
+        target_badge = f'<span class="{BADGE_MUTED}">{escape_html(symbol)}</span>'
 
-    # Render score as a horizontal bar using Tailwind widths + a number.
-    # Clamp to [0, 1] and convert to a 0-100 percent width for the bar.
+    # Render score as a horizontal bar + number. Clamp to [0, 1] and
+    # convert to a 0-100 percent width for the fill.
     if isinstance(score, (int, float)):
         clamped = max(0.0, min(1.0, float(score)))
         pct = round(clamped * 100)
         score_cell = (
             f'<div class="flex items-center gap-2">'
-            f'<div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">'
-            f'<div class="h-full bg-emerald-500" style="width: {pct}%"></div>'
+            f'<div class="flex-1 h-2 rounded-full {BAR_TRACK} overflow-hidden">'
+            f'<div class="h-full {BAR_FILL_PRIMARY}" style="width: {pct}%"></div>'
             f"</div>"
             f'<span class="font-mono text-xs text-gray-700 tabular-nums w-10 text-right">'
             f"{clamped:.2f}</span></div>"

@@ -20,6 +20,18 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.theme import (
+    BADGE_NCT,
+    BADGE_PMID,
+    CARD_STYLE_BLOCK,
+    CARD_STYLE_INLINE,
+    CARD_WRAPPER,
+    HEADER_BORDER,
+    PILL_PHASE,
+    PILL_STATUS,
+    SUBTITLE_STYLE_INLINE,
+    TITLE_STYLE_INLINE,
+)
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
@@ -58,7 +70,8 @@ def build(
     )
 
     raw = (
-        '<div class="p-4 font-sans text-gray-900 space-y-4">\n'
+        f"{CARD_STYLE_BLOCK}\n"
+        f'<div class="{CARD_WRAPPER} space-y-4" style="{CARD_STYLE_INLINE}">\n'
         f"  {header_html}\n"
         f"  {body_html}\n"
         "</div>"
@@ -88,26 +101,17 @@ def _render_header(title: str, nct_id: str, data: dict[str, Any]) -> str:
     nct_url = f"https://clinicaltrials.gov/study/{escape_html(nct_id)}"
     nct_badge = (
         f'<a href="{nct_url}" target="_blank" rel="noopener" '
-        f'class="font-mono text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 '
-        f'border border-blue-200 hover:bg-blue-100">{escape_html(nct_id)}</a>'
+        f'class="{BADGE_NCT}">{escape_html(nct_id)}</a>'
     )
 
     pills: list[str] = []
 
     phase = data.get("phase")
     if phase:
-        pills.append(
-            f'<span class="inline-flex items-center text-xs px-2 py-0.5 rounded '
-            f'bg-amber-50 text-amber-700 border border-amber-200">'
-            f"{escape_html(phase)}</span>"
-        )
+        pills.append(f'<span class="{PILL_PHASE}">{escape_html(phase)}</span>')
     status = data.get("status")
     if status:
-        pills.append(
-            f'<span class="inline-flex items-center text-xs px-2 py-0.5 rounded '
-            f'bg-emerald-50 text-emerald-700 border border-emerald-200">'
-            f"{escape_html(status)}</span>"
-        )
+        pills.append(f'<span class="{PILL_STATUS}">{escape_html(status)}</span>')
 
     meta_bits: list[str] = []
     sponsor = data.get("sponsor")
@@ -126,12 +130,12 @@ def _render_header(title: str, nct_id: str, data: dict[str, Any]) -> str:
 
     pills_html = "".join(f"\n      {p}" for p in pills)
 
-    return f"""<header class="border-b border-gray-200 pb-3">
-    <h2 class="text-base font-semibold leading-snug">{escape_html(title)}</h2>
+    return f"""<header class="{HEADER_BORDER} pb-3">
+    <h2 class="text-base font-semibold leading-snug" style="{TITLE_STYLE_INLINE}">{escape_html(title)}</h2>
     <div class="mt-2 flex flex-wrap items-center gap-2">
       {nct_badge}{pills_html}
     </div>
-    <p class="mt-1 text-xs text-gray-500">{meta_line}</p>
+    <p class="mt-1 text-xs text-gray-500" style="{SUBTITLE_STYLE_INLINE}">{meta_line}</p>
   </header>"""
 
 
@@ -346,9 +350,7 @@ def _render_publications(data: dict[str, Any]) -> str:
             pmid_cell = (
                 f'<a href="https://pubmed.ncbi.nlm.nih.gov/{escape_html(pmid)}/" '
                 f'target="_blank" rel="noopener" '
-                f'class="font-mono text-xs px-2 py-0.5 rounded bg-emerald-50 '
-                f'text-emerald-700 border border-emerald-200 hover:bg-emerald-100">'
-                f"{escape_html(pmid)}</a>"
+                f'class="{BADGE_PMID}">{escape_html(pmid)}</a>'
             )
         else:
             pmid_cell = '<span class="text-xs text-gray-400">—</span>'
