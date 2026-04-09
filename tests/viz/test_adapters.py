@@ -1,7 +1,7 @@
-"""Tests for app.viz.adapters — promptclub → yallah_viz shape translation.
+"""Tests for app.viz.adapters — promptclub → pharmafuse-mcp viz shape translation.
 
 These tests construct promptclub Pydantic models, call the adapter, and
-verify that the resulting envelope is a valid yallah_viz output.
+verify that the resulting envelope is a valid pharmafuse-mcp viz output.
 """
 
 from __future__ import annotations
