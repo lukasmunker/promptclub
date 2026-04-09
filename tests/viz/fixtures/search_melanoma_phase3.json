@@ -1,0 +1,38 @@
+{
+  "query": { "indication": "melanoma", "phase": "3" },
+  "title": "Phase 3 Melanoma Trials",
+  "search_url": "https://clinicaltrials.gov/search?cond=melanoma&phase=3",
+  "results": [
+    {
+      "nct_id": "NCT01234567",
+      "title": "Pembrolizumab vs Placebo in Advanced Melanoma",
+      "phase": "Phase 3",
+      "status": "Recruiting",
+      "sponsor": "Sponsor A",
+      "enrollment": 450,
+      "primary_completion_date": "2026-12-01",
+      "snippet": "A randomized, double-blind trial comparing pembrolizumab with placebo in patients with advanced melanoma after surgical resection."
+    },
+    {
+      "nct_id": "NCT02345678",
+      "title": "Nivolumab + Ipilimumab in BRAF-Mutated Melanoma",
+      "phase": "Phase 3",
+      "status": "Active, not recruiting",
+      "sponsor": "Sponsor B",
+      "enrollment": 320,
+      "primary_completion_date": "2027-06-30",
+      "snippet": "Evaluating combination immunotherapy in patients with BRAF V600 mutated unresectable melanoma."
+    },
+    {
+      "nct_id": "NCT03456789",
+      "title": "Adjuvant Tumor Infiltrating Lymphocytes for Stage III Melanoma",
+      "phase": "Phase 3",
+      "status": "Recruiting",
+      "sponsor": "Sponsor C",
+      "enrollment": 180,
+      "primary_completion_date": "2028-03-15",
+      "snippet": "Adjuvant treatment with expanded TIL therapy following surgical resection in Stage III melanoma patients."
+    }
+  ],
+  "total": 8
+}
