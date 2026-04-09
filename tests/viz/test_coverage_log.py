@@ -55,3 +55,19 @@ def test_log_entry_creates_parent_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(coverage_log, "LOG_PATH", nested)
     coverage_log.log_entry(tool="t", recipe="r", fallback_used=False, fallback_reason="")
     assert nested.exists()
+
+
+def test_build_response_writes_coverage_log(tmp_log_path):
+    from app.viz.build import build_response
+
+    build_response(
+        tool_name="search_clinical_trials",
+        data={"results": []},
+        sources=[],
+        query_hint="any",
+    )
+    lines = tmp_log_path.read_text().strip().splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["tool"] == "search_clinical_trials"
+    assert record["fallback_used"] is True  # empty results triggers fallback

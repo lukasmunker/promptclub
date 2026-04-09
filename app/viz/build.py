@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.viz import coverage_log
 from app.viz import render_hints
 from app.viz.contract import Decision, DecisionKind, Envelope, PreferVisualization, Source
 from app.viz.decision import should_visualize
@@ -78,14 +79,12 @@ def build_response(
     )
     serialized = _serialize(envelope)
 
-    # Coverage log hook (Task 13 will add the actual write — for now we
-    # just stash the metadata so the test can observe it).
-    serialized["_coverage"] = {
-        "tool": tool_name,
-        "recipe": recipe_name,
-        "fallback_used": fallback_used,
-        "fallback_reason": fallback_reason,
-    }
+    coverage_log.log_entry(
+        tool=tool_name,
+        recipe=recipe_name,
+        fallback_used=fallback_used,
+        fallback_reason=fallback_reason,
+    )
     return serialized
 
 
