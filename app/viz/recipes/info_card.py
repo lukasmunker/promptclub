@@ -59,12 +59,15 @@ def build(
 
     body = "\n    ".join(body_parts)
 
+    glossary_html = _render_glossary(data.get("knowledge_annotations") or [])
+
     raw = f"""<div class="p-4 font-sans rounded-lg border border-gray-200 bg-white">
   <header class="border-b border-gray-100 pb-2 mb-2">
     <h2 class="text-base font-semibold text-gray-900">{escape_html(title)}</h2>
   </header>
   <section>
     {body}
+    {glossary_html}
   </section>
 </div>"""
 
@@ -82,3 +85,36 @@ def build(
         blueprint=None,
         raw=raw,
     )
+
+
+def _render_glossary(annotations: list[dict[str, Any]]) -> str:
+    """Render a deduplicated glossary block from knowledge annotations.
+
+    Only one entry per unique lexicon_id is shown — the first occurrence
+    wins. Returns empty string if no annotations.
+    """
+    if not annotations:
+        return ""
+
+    seen: set[str] = set()
+    items: list[str] = []
+    for ann in annotations:
+        lid = ann.get("lexicon_id")
+        if not lid or lid in seen:
+            continue
+        seen.add(lid)
+        term = escape_html(str(ann.get("matched_term", "")))
+        definition = escape_html(str(ann.get("short_definition", "")))
+        items.append(
+            f'<li class="text-xs text-gray-700"><span class="font-semibold">{term}</span> — {definition}</li>'
+        )
+
+    if not items:
+        return ""
+
+    return f"""<div class="mt-4 pt-3 border-t border-gray-100">
+      <p class="text-xs uppercase tracking-wide text-gray-400 mb-2">Glossary</p>
+      <ul class="space-y-1">
+        {"".join(items)}
+      </ul>
+    </div>"""

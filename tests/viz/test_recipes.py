@@ -711,3 +711,54 @@ def test_new_recipes_in_registry():
         builder = REGISTRY[name]
         payload = builder({}, sources=[])
         assert payload.recipe == name
+
+
+def test_info_card_renders_glossary_when_annotations_present():
+    """When the data dict carries knowledge_annotations, info_card
+    appends a glossary footer block."""
+    data = {
+        "title": "Search Results",
+        "bullets": ["Phase 3 study found"],
+        "knowledge_annotations": [
+            {
+                "field_path": "results[0].phase",
+                "matched_term": "phase 3",
+                "lexicon_id": "trial-phase-3",
+                "short_definition": "Late-stage trial confirming efficacy.",
+                "clinical_context": "Phase 3 trials enroll hundreds to thousands.",
+                "review_status": "reviewed",
+            }
+        ],
+    }
+    payload = info_card.build(data, sources=[])
+    assert "Glossary" in payload.raw
+    assert "phase 3" in payload.raw.lower()
+    assert "Late-stage trial" in payload.raw
+
+
+def test_info_card_no_glossary_when_no_annotations():
+    data = {"title": "Result", "bullets": ["x"]}
+    payload = info_card.build(data, sources=[])
+    assert "Glossary" not in payload.raw
+
+
+def test_info_card_glossary_dedupes_lexicon_ids():
+    """Multiple annotations for the same lexicon_id should appear once."""
+    data = {
+        "title": "Result",
+        "knowledge_annotations": [
+            {
+                "field_path": "a", "matched_term": "phase 3", "lexicon_id": "trial-phase-3",
+                "short_definition": "Late-stage trial.", "clinical_context": "x",
+                "review_status": "reviewed",
+            },
+            {
+                "field_path": "b", "matched_term": "phase 3", "lexicon_id": "trial-phase-3",
+                "short_definition": "Late-stage trial.", "clinical_context": "x",
+                "review_status": "reviewed",
+            },
+        ],
+    }
+    payload = info_card.build(data, sources=[])
+    # Glossary appears once for the unique lexicon_id
+    assert payload.raw.count("Late-stage trial") == 1
