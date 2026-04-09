@@ -1,10 +1,10 @@
 mcpServers:
-  # MCP Yallah — Clinical Trial Intelligence MCP Server for BioNTech
+  # Pharmafuse MCP — Clinical Trial Intelligence MCP Server for BioNTech
   # (Future Leader Summit 2026-03-20). Live deployment in europe-west1.
   # Rebuild / redeploy with `./deploy.sh` from the repo root.
-  mcp-yallah:
+  pharmafuse-mcp:
     type: streamable-http
-    url: https://mcp-yallah-4hlbn744qa-ew.a.run.app/mcp
+    url: https://pharmafuse-mcp-4hlbn744qa-ew.a.run.app/mcp
     timeout: 30000
     initTimeout: 15000
     serverInstructions: true

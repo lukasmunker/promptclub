@@ -1,11 +1,11 @@
-# Cloud Build pipeline for the mcp-yallah Cloud Run service.
+# Cloud Build pipeline for the pharmafuse-mcp Cloud Run service.
 #
 # Triggered manually via `gcloud builds submit` or from deploy.sh. Uses
 # Cloud Run's managed source-deploy flow under the hood so we don't have
 # to maintain a separate Artifact Registry repo.
 #
 # Required substitutions (with their defaults for `gcloud builds submit`):
-#   _SERVICE      — Cloud Run service name               [default: mcp-yallah]
+#   _SERVICE      — Cloud Run service name               [default: pharmafuse-mcp]
 #   _REGION       — Cloud Run region                     [default: europe-west1]
 #   _PROJECT      — GCP project ID                       [default: $PROJECT_ID]
 #   _REPO         — Artifact Registry repo for the image [default: cloud-run-source-deploy]
@@ -14,7 +14,7 @@
 #   gcloud builds submit --config cloudbuild.yaml .
 
 substitutions:
-  _SERVICE: "mcp-yallah"
+  _SERVICE: "pharmafuse-mcp"
   _REGION: "europe-west1"
   _REPO: "cloud-run-source-deploy"
 
@@ -55,7 +55,7 @@ steps:
       - "--timeout=300"
       - "--max-instances=5"
       - "--concurrency=40"
-      - "--set-env-vars=APP_ENV=prod,USER_AGENT=mcp-yallah/0.3.0,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=true,VERTEX_GEMINI_MODEL=gemini-2.5-flash,ENABLE_VERTEX_WEB_SEARCH=true"
+      - "--set-env-vars=APP_ENV=prod,USER_AGENT=pharmafuse-mcp/0.3.0,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=true,VERTEX_GEMINI_MODEL=gemini-2.5-flash,ENABLE_VERTEX_WEB_SEARCH=true"
     waitFor: ["push"]
 
 images:
