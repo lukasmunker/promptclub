@@ -31,6 +31,7 @@ from app.viz.theme import (
     BADGE_TARGET,
     BAR_FILL_PRIMARY,
     BAR_TRACK,
+    CARD_STYLE_BLOCK,
     CARD_WRAPPER,
     HEADER_BORDER,
     LINK_SUBTLE,
@@ -66,7 +67,8 @@ def build(
         f"https://platform.opentargets.org/disease/{escape_html(disease_id)}"
     )
 
-    raw = f"""<div class="{CARD_WRAPPER}">
+    raw = f"""{CARD_STYLE_BLOCK}
+<div class="{CARD_WRAPPER}">
   <header class="mb-3 flex items-baseline justify-between {HEADER_BORDER} pb-2">
     <div>
       <h2 class="text-base font-semibold">{escape_html(title)}</h2>

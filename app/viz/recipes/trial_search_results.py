@@ -17,6 +17,7 @@ from app.viz.theme import (
     BADGE_MUTED,
     BADGE_NCT,
     BADGE_PMID,
+    CARD_STYLE_BLOCK,
     CARD_WRAPPER,
     PILL_PHASE,
 )
@@ -45,6 +46,7 @@ def build(
     footer_html = _render_more_footer(more, data.get("search_url")) if more > 0 else ""
 
     raw = (
+        f"{CARD_STYLE_BLOCK}\n"
         f'<div class="{CARD_WRAPPER}">\n'
         f'<div class="grid gap-3">\n'
         f"{cards_html}\n"
