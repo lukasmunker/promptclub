@@ -21,6 +21,12 @@ __all__ = ["build", "MAX_TRIALS"]
 
 MAX_TRIALS = 15
 
+# Task labels are the longest horizontally-laid-out text in a gantt bar and
+# easily collide with section headers / other bars when too long. Keep them
+# short — full trial title / NCT ID is still visible on hover in the
+# Mermaid renderer.
+MAX_TASK_LABEL_LENGTH = 32
+
 
 def build(
     data: dict[str, Any],
@@ -68,11 +74,20 @@ def _render_gantt(title: str, trials: list[dict[str, Any]]) -> str:
         sponsor = safe_label(t.get("sponsor") or "(unknown)")
         groups[sponsor].append(t)
 
+    # Emit a ``section`` header only when the gantt has more than one section.
+    # Mermaid's single-section gantt renders the section header on the same
+    # visual row as the (only) task bar, producing a text collision —
+    # dropping it keeps the bar clean and still labels the sponsor via the
+    # task label itself.
+    emit_sections = len(groups) > 1
+
     for sponsor, items in groups.items():
-        lines.append(f"    section {sponsor}")
+        if emit_sections:
+            lines.append(f"    section {sponsor}")
         for t in items:
             label = safe_label(
-                t.get("acronym") or t.get("title") or t.get("nct_id") or "trial"
+                t.get("acronym") or t.get("title") or t.get("nct_id") or "trial",
+                max_length=MAX_TASK_LABEL_LENGTH,
             )
             nct = t.get("nct_id") or "trial"
             # Mermaid task syntax: Label :status, taskId, start, end
@@ -83,9 +98,9 @@ def _render_gantt(title: str, trials: list[dict[str, Any]]) -> str:
             )
 
     if not trials:
-        # Empty-state: render a gantt with a placeholder section so the artifact
-        # still parses. The decision layer should have caught this, but defense in depth.
-        lines.append("    section No data")
+        # Empty-state: render a gantt with a placeholder task so the artifact
+        # still parses. The decision layer should have caught this, but
+        # defense in depth.
         lines.append("    (no datable trials) :active, nodata, 2026-01-01, 2026-01-02")
 
     return "\n".join(lines)
