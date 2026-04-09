@@ -576,3 +576,46 @@ def test_build_response_trial_details_rich(trial_details_nct01):
     assert "raw" in envelope["ui"]
     assert "components" not in envelope["ui"]
     assert "blueprint" not in envelope["ui"]
+
+
+from app.viz.recipes import info_card
+
+
+def test_info_card_renders_with_minimal_input():
+    """Empty data must produce a valid UiPayload — this is the universal
+    catch-all for the coverage guarantee."""
+    payload = info_card.build({}, sources=[])
+    assert payload.recipe == "info_card"
+    assert payload.artifact.type == "html"
+    assert payload.raw is not None
+    assert len(payload.raw) > 0
+
+
+def test_info_card_renders_with_title_and_bullets():
+    data = {
+        "title": "Search Results",
+        "bullets": ["12 trials found", "5 sponsors", "3 phases"],
+        "subtitle": "Pembrolizumab in NSCLC",
+    }
+    payload = info_card.build(data, sources=[])
+    assert "Search Results" in payload.raw
+    assert "12 trials found" in payload.raw
+    assert "Pembrolizumab in NSCLC" in payload.raw
+
+
+def test_info_card_handles_empty_results():
+    data = {
+        "title": "No results",
+        "subtitle": "Adverse events for drug X",
+        "no_results_hint": "Sources checked: openfda, ema",
+    }
+    payload = info_card.build(data, sources=[])
+    assert "No results" in payload.raw
+    assert "Sources checked" in payload.raw
+
+
+def test_info_card_escapes_html():
+    data = {"title": "<script>alert(1)</script>"}
+    payload = info_card.build(data, sources=[])
+    assert "<script>" not in payload.raw
+    assert "&lt;script&gt;" in payload.raw
