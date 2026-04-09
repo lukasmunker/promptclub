@@ -342,9 +342,16 @@ def _handle_search_trials(
     trials_raw = data.get("trials") or []
     normalized_results = [_normalize_trial_hit(t) for t in trials_raw]
 
+    # The orchestrator's summary may exceed ArtifactMeta.title's 150-char limit
+    # (e.g. when it appends linked-pmid truncation notes from PR #2). Keep the
+    # full summary available in the data field; only truncate when used as a UI
+    # title.
+    full_summary = data.get("summary") or "Clinical Trials"
+    title = full_summary if len(full_summary) <= 140 else full_summary[:137] + "..."
+
     recipe_data = {
         "query": query or "oncology trials",
-        "title": data.get("summary") or "Clinical Trials",
+        "title": title,
         "results": normalized_results,
         "total": len(normalized_results),
     }

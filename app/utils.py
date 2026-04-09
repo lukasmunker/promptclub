@@ -142,3 +142,31 @@ def normalize_condition(term: str) -> str:
 def normalize_drug(term: str) -> str:
     """Map trade names to INN (generic) drug names for better API matches."""
     return DRUG_ALIASES.get(term.lower().strip(), term)
+
+
+# ---------------------------------------------------------------------------
+# LLM-bound serialization
+# ---------------------------------------------------------------------------
+
+
+def lean_dump(obj: Any) -> Any:
+    """Convert a Pydantic model (or list/dict of them) to a plain dict,
+    recursively stripping the ``raw`` field at every nesting level.
+
+    The ``raw`` field on adapter records duplicates the unparsed upstream API
+    payload and accounts for 92-98 % of LLM-bound bytes for the heaviest tools
+    (notably ``get_regulatory_context``: ~2 MB → ~47 KB after strip). Strip it
+    here at the LLM boundary while keeping it on the in-memory model so
+    debugging and adapter-internal logic still see the original payload.
+    """
+    if hasattr(obj, "model_dump"):
+        return _strip_raw(obj.model_dump())
+    return _strip_raw(obj)
+
+
+def _strip_raw(data: Any) -> Any:
+    if isinstance(data, dict):
+        return {k: _strip_raw(v) for k, v in data.items() if k != "raw"}
+    if isinstance(data, list):
+        return [_strip_raw(item) for item in data]
+    return data

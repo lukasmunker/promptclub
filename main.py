@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI
 from mcp.server.fastmcp import FastMCP
 
+from app.citations import attach_citation_layer, citations_from_rows
 from app.services.orchestration import Orchestrator
 from app.settings import settings
 
@@ -35,7 +36,7 @@ async def search_trials(
         status=status,
         include_web_context=include_web_context,
     )
-    return result.model_dump()
+    return attach_citation_layer(result.model_dump(), result.citations)
 
 
 @mcp.tool()
@@ -44,7 +45,10 @@ async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
     Resolve free-text disease names to Open Targets disease IDs.
     """
     rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
-    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+    return attach_citation_layer(
+        {"count": len(rows), "results": [r.model_dump() for r in rows]},
+        citations_from_rows(rows),
+    )
 
 
 @mcp.tool()
@@ -55,7 +59,10 @@ async def get_trial_details(nct_id: str) -> dict[str, Any]:
     record = await orchestrator.get_trial_details(nct_id)
     if not record:
         return {"found": False, "nct_id": nct_id}
-    return {"found": True, "trial": record.model_dump()}
+    return attach_citation_layer(
+        {"found": True, "trial": record.model_dump()},
+        record.citations,
+    )
 
 
 @mcp.tool()
@@ -64,7 +71,10 @@ async def search_publications(query: str, page_size: int = 10) -> dict[str, Any]
     Search PubMed via NCBI E-utilities.
     """
     rows = await orchestrator.search_publications(query=query, page_size=page_size)
-    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+    return attach_citation_layer(
+        {"count": len(rows), "results": [r.model_dump() for r in rows]},
+        citations_from_rows(rows),
+    )
 
 
 @mcp.tool()
@@ -73,7 +83,10 @@ async def get_target_context(disease_id: str) -> dict[str, Any]:
     Get target-disease associations from Open Targets using a disease ID.
     """
     rows = await orchestrator.get_target_context(disease_id=disease_id)
-    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+    return attach_citation_layer(
+        {"count": len(rows), "results": [r.model_dump() for r in rows]},
+        citations_from_rows(rows),
+    )
 
 
 @mcp.tool()
@@ -82,7 +95,10 @@ async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
     Get public regulatory/label context from openFDA.
     """
     rows = await orchestrator.get_regulatory_context(drug_name=drug_name)
-    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+    return attach_citation_layer(
+        {"count": len(rows), "results": [r.model_dump() for r in rows]},
+        citations_from_rows(rows),
+    )
 
 
 @mcp.tool()
@@ -91,7 +107,10 @@ async def web_context_search(query: str) -> dict[str, Any]:
     Optional Vertex AI Google Search grounding for public web context.
     """
     rows = await orchestrator.web_context(query=query)
-    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+    return attach_citation_layer(
+        {"count": len(rows), "results": [r.model_dump() for r in rows]},
+        citations_from_rows(rows),
+    )
 
 
 @mcp.tool()
