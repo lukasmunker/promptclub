@@ -25,6 +25,7 @@ from audit_viz_paths import run_audit  # noqa: E402
 # must be ZERO.
 RATCHET_MAX_SKIP_SITES = 14
 RATCHET_MAX_NO_DATA_SITES = 0
+RATCHET_MAX_MANUAL_ENVELOPE_SITES = 0
 
 
 def test_skip_sites_within_baseline():
@@ -45,4 +46,16 @@ def test_no_data_literals_eliminated():
         f"all such sites must be eliminated. The [NO DATA AVAILABLE] "
         f"path is dead. Sites:\n"
         + "\n".join(f"  {s.file}:{s.line} — {s.snippet}" for s in result.no_data_sites)
+    )
+
+
+def test_no_manual_envelope_sites():
+    result = run_audit()
+    assert len(result.manual_envelope_sites) == RATCHET_MAX_MANUAL_ENVELOPE_SITES, (
+        f"Found {len(result.manual_envelope_sites)} manual envelope dict literals "
+        f"missing 'ui' key — all envelopes must come from build_response. Sites:\n"
+        + "\n".join(
+            f"  {s.file}:{s.line} — {s.snippet}"
+            for s in result.manual_envelope_sites
+        )
     )
