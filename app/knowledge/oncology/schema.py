@@ -15,6 +15,7 @@ production. The curation pipeline relies on them.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Literal
 from urllib.parse import urlparse
@@ -136,5 +137,11 @@ class Lexicon(BaseModel):
 
     entries: list[LexiconEntry]
     term_index: dict[str, LexiconEntry] = Field(default_factory=dict)
+    # Pre-compiled alternation regex covering every term + alias, sorted
+    # longest-first so re.finditer naturally prefers longer matches. Built
+    # by the loader (see ``_build_lexicon`` in
+    # ``app.knowledge.oncology.loader``). Optional so empty-lexicon
+    # fixtures remain valid, but in production this should always be set.
+    matcher_re: re.Pattern | None = None
 
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)

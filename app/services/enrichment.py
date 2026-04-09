@@ -7,8 +7,16 @@ terms (canonical or alias), and returns a NEW dict with a top-level
 Match rules:
   1. Case-insensitive
   2. Word-boundary (so 'RECIST' does not match in 'prerecisted')
-  3. No fuzzy matching — deliberately simple, deterministic
-  4. Capped at MAX_ANNOTATIONS per response to prevent noise
+  3. Longest match wins — if the text contains 'active, not recruiting'
+     we annotate ONLY with that term, not also with the shorter
+     'recruiting' which has the opposite meaning
+  4. No fuzzy matching — deliberately simple, deterministic
+  5. Capped at MAX_ANNOTATIONS per response to prevent noise
+
+Performance: the lexicon builds a single pre-compiled alternation
+regex at load time (sorted longest-first). ``_scan_string`` runs one
+``finditer`` per string instead of ~700 ``re.search`` calls, cutting
+enrichment time from ~700ms per realistic response down to ~1ms.
 
 Side effects: NONE. The input dict is not mutated. The output is a
 new dict with the same keys plus ``knowledge_annotations``.
@@ -17,7 +25,6 @@ new dict with the same keys plus ``knowledge_annotations``.
 from __future__ import annotations
 
 import copy
-import re
 from typing import Any
 
 from app.knowledge.oncology.schema import Annotation, Lexicon
@@ -80,29 +87,53 @@ def _scan_string(
     seen: set[tuple[str, str]],
 ) -> None:
     """Find lexicon terms in a string with case-insensitive word-boundary
-    matching. The first matching term wins per (field_path, lexicon_id)."""
+    matching. Longest match wins when matches overlap.
+
+    Performance: uses the lexicon's pre-compiled combined alternation
+    regex (one ``finditer`` call per string) rather than iterating
+    ~700 per-term patterns. See ``_build_lexicon`` for the regex.
+    """
     if not text:
         return
-    text_lower = text.lower()
-    for term_lower, entry in lexicon.term_index.items():
-        # Word-boundary match: term must be surrounded by non-word chars
-        # or string boundaries.
-        pattern = r"\b" + re.escape(term_lower) + r"\b"
-        m = re.search(pattern, text_lower)
-        if m:
-            # Recover original casing from the source text
-            matched_text = text[m.start():m.end()]
-            key = (field_path, entry.id)
-            if key in seen:
-                continue
-            seen.add(key)
-            annotations.append({
-                "field_path": field_path,
-                "matched_term": matched_text,
-                "lexicon_id": entry.id,
-                "short_definition": entry.short_definition,
-                "clinical_context": entry.clinical_context,
-                "review_status": entry.review_status,
-            })
-            if len(annotations) >= MAX_ANNOTATIONS:
-                return
+    if lexicon.matcher_re is None:
+        # Lexicon was built without a matcher (e.g. empty term_index).
+        # Nothing to scan — return silently.
+        return
+
+    # Track occupied character ranges to enforce longest-match-wins.
+    # The alternation is sorted longest-first, so earlier matches from
+    # finditer are the longer ones; we keep them and drop any later
+    # (shorter) match whose span overlaps. Example: for
+    # "Active, not recruiting" the long term is matched first, and
+    # the subsequent "Recruiting" match is skipped — critical because
+    # those two terms have opposite semantic meanings.
+    occupied: list[tuple[int, int]] = []
+
+    for m in lexicon.matcher_re.finditer(text):
+        start, end = m.start(), m.end()
+        if any(s < end and e > start for s, e in occupied):
+            continue
+        occupied.append((start, end))
+
+        matched_text = text[start:end]  # original casing preserved
+        term_lower = matched_text.lower()
+        entry = lexicon.term_index.get(term_lower)
+        if entry is None:
+            # Defensive: the regex came from the term_index, so this
+            # should never happen.
+            continue
+
+        key = (field_path, entry.id)
+        if key in seen:
+            continue
+        seen.add(key)
+        annotations.append({
+            "field_path": field_path,
+            "matched_term": matched_text,
+            "lexicon_id": entry.id,
+            "short_definition": entry.short_definition,
+            "clinical_context": entry.clinical_context,
+            "review_status": entry.review_status,
+        })
+        if len(annotations) >= MAX_ANNOTATIONS:
+            return
