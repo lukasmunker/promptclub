@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.utils.citations import format_source_footer
 from app.viz.utils.identifiers import make_identifier
 
 __all__ = ["build", "MAX_ROWS"]
@@ -20,7 +21,10 @@ __all__ = ["build", "MAX_ROWS"]
 MAX_ROWS = 25
 
 
-def build(data: dict[str, Any]) -> UiPayload:
+def build(
+    data: dict[str, Any],
+    sources: list[Any] | None = None,
+) -> UiPayload:
     """Build a Markdown table envelope for search_clinical_trials / search_publications."""
     results: list[dict[str, Any]] = data.get("results") or []
     total = data.get("total", len(results))
@@ -39,18 +43,19 @@ def build(data: dict[str, Any]) -> UiPayload:
     else:
         table_md = _render_publication_table(shown)
 
-    footer_md = ""
+    overflow_md = ""
     if more > 0:
         search_url = data.get("search_url")
         if search_url:
-            footer_md = (
+            overflow_md = (
                 f"\n_… and **{more} more** — "
                 f"[view the full list on ClinicalTrials.gov]({_md_escape_url(search_url)})._\n"
             )
         else:
-            footer_md = f"\n_… and **{more} more** not shown._\n"
+            overflow_md = f"\n_… and **{more} more** not shown._\n"
 
-    raw = f"## {_md_escape(title)}\n\n{table_md}{footer_md}"
+    source_footer = format_source_footer(sources)
+    raw = f"## {_md_escape(title)}\n\n{table_md}{overflow_md}{source_footer}"
 
     return UiPayload(
         recipe="trial_search_results",

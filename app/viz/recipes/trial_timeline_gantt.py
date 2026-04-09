@@ -16,6 +16,7 @@ from collections import defaultdict
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.utils.citations import format_source_footer
 from app.viz.utils.identifiers import make_identifier
 from app.viz.utils.mermaid import is_valid_iso_date, safe_label
 
@@ -24,7 +25,10 @@ __all__ = ["build", "MAX_TRIALS"]
 MAX_TRIALS = 15
 
 
-def build(data: dict[str, Any]) -> UiPayload:
+def build(
+    data: dict[str, Any],
+    sources: list[Any] | None = None,
+) -> UiPayload:
     trials_all: list[dict[str, Any]] = data.get("trials") or []
     # Only trials with valid ISO start + primary completion dates can be rendered
     trials = [
@@ -38,11 +42,13 @@ def build(data: dict[str, Any]) -> UiPayload:
     query = data.get("query") or title
 
     gantt = _render_gantt(title, trials)
+    source_footer = format_source_footer(sources)
 
     # Wrap the mermaid source in a Markdown heading + fenced code block so the
     # envelope's ui.raw is a self-contained markdown snippet the LLM can paste
-    # verbatim into the chat message.
-    raw = f"## {_md_escape(title)}\n\n```mermaid\n{gantt}\n```\n"
+    # verbatim into the chat message. The citation footer follows the fence
+    # so it sits visibly below the rendered gantt.
+    raw = f"## {_md_escape(title)}\n\n```mermaid\n{gantt}\n```\n{source_footer}"
 
     return UiPayload(
         recipe="trial_timeline_gantt",

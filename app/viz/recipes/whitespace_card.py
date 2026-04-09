@@ -25,12 +25,16 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.utils.citations import format_source_footer
 from app.viz.utils.identifiers import make_identifier
 
 __all__ = ["build"]
 
 
-def build(data: dict[str, Any]) -> UiPayload:
+def build(
+    data: dict[str, Any],
+    sources: list[Any] | None = None,
+) -> UiPayload:
     condition = data.get("condition") or "indication"
     title = f"Whitespace Analysis — {condition}"
 
@@ -43,13 +47,15 @@ def build(data: dict[str, Any]) -> UiPayload:
     overview_md = _render_overview_table(phase_counts, status_counts, pubs_3yr, fda_count)
     signals_md = _render_signals(signals)
 
+    source_footer = format_source_footer(sources)
+
     raw = (
         f"## {_md_escape(title)}\n\n"
-        f"_Source: ClinicalTrials.gov · PubMed · openFDA_\n\n"
         f"### Activity Overview\n\n"
         f"{overview_md}\n"
         f"### Identified Whitespace Signals\n\n"
         f"{signals_md}\n"
+        f"{source_footer}"
     )
 
     return UiPayload(
