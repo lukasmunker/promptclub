@@ -158,10 +158,12 @@ def test_mermaid_envelope_emits_artifact_block_without_code_fence():
     assert "```mermaid" not in text
 
 
-# --- Text-only / SKIP path -------------------------------------------------
+# --- Text-only / SKIP path (now dead — raises ValueError) ------------------
 
 
-def test_skip_envelope_emits_no_visualization_marker():
+def test_skip_envelope_raises_value_error():
+    """The SKIP path (ui=None envelope) is now a caller bug — build_response
+    guarantees ui is always populated. envelope_to_llm_text must raise."""
     env = {
         "render_hint": (
             "Answer as plain text based on data. Cite sources using NCT/PMID "
@@ -177,31 +179,26 @@ def test_skip_envelope_emits_no_visualization_marker():
             }
         ],
     }
-    text = envelope_to_llm_text(env)
-    assert text.startswith("[NO VISUALIZATION")
-    assert ":::artifact" not in text  # no fake artifact block
-    assert '"count": 3' in text  # data JSON included
-    assert "[opentargets] EFO_0000756" in text  # sources footer
-    assert "No forward-looking statements" in text
+    with pytest.raises(ValueError, match="without a ui field"):
+        envelope_to_llm_text(env)
 
 
-def test_skip_envelope_truncates_huge_data_dump():
+def test_skip_envelope_with_no_ui_raises_value_error():
+    """Any envelope missing ui raises ValueError — even with large data."""
     env = {
         "render_hint": "Answer as plain text. Cite sources. No forward-looking.",
         "data": {"huge": "x" * 10000},
         "sources": [],
     }
-    text = envelope_to_llm_text(env)
-    assert text.startswith("[NO VISUALIZATION")
-    assert "truncated" in text.lower()
-    # Overall text must stay reasonable so it doesn't eat the LLM context
-    assert len(text) < 5000
+    with pytest.raises(ValueError, match="without a ui field"):
+        envelope_to_llm_text(env)
 
 
-# --- Legacy "no data" path --------------------------------------------------
+# --- Legacy "no data" path (now dead — raises ValueError) ------------------
 
 
-def test_no_data_envelope_emits_marker_and_guardrail():
+def test_no_data_envelope_raises_value_error():
+    """The no_data shortcircuit is gone — envelope_to_llm_text raises."""
     env = {
         "no_data": True,
         "source": "ClinicalTrials.gov v2",
@@ -211,16 +208,31 @@ def test_no_data_envelope_emits_marker_and_guardrail():
             "Tell the user no data is available; do NOT answer from training knowledge."
         ),
     }
-    text = envelope_to_llm_text(env)
-    assert text.startswith("[NO DATA AVAILABLE]")
-    assert "ClinicalTrials.gov v2" in text
-    assert "disease='xyz'" in text
-    assert "do NOT answer from training knowledge" in text
+    with pytest.raises(ValueError, match="without a ui field"):
+        envelope_to_llm_text(env)
 
 
-def test_no_data_without_guardrail_still_produces_text():
+def test_no_data_without_guardrail_raises_value_error():
+    """The no_data shortcircuit is gone — any ui=None envelope raises."""
     env = {"no_data": True, "source": "pubmed", "query": "weird"}
-    text = envelope_to_llm_text(env)
-    assert text.startswith("[NO DATA AVAILABLE]")
-    assert "pubmed" in text
-    assert "no data was found" in text.lower()
+    with pytest.raises(ValueError, match="without a ui field"):
+        envelope_to_llm_text(env)
+
+
+def test_mcp_output_never_emits_no_visualization_marker():
+    """The [NO VISUALIZATION] and [NO DATA AVAILABLE] markers must not
+    appear for any envelope produced by build_response."""
+    from app.viz.build import build_response
+    from app.viz.mcp_output import envelope_to_llm_text
+
+    for empty_data in ({}, {"results": []}, {"trials": []}):
+        envelope = build_response(
+            tool_name="search_clinical_trials",
+            data=empty_data,
+            sources=[],
+            query_hint="test",
+        )
+        text = envelope_to_llm_text(envelope)
+        assert ":::artifact" in text
+        assert "[NO VISUALIZATION]" not in text
+        assert "[NO DATA AVAILABLE]" not in text
