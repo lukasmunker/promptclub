@@ -694,3 +694,17 @@ def test_single_entity_card_handles_no_facts():
     data = {"kind": "trial", "title": "NCT00000000"}
     payload = single_entity_card.build(data, sources=[])
     assert "NCT00000000" in payload.raw
+
+
+def test_new_recipes_in_registry():
+    from app.viz.recipes import REGISTRY
+
+    assert "info_card" in REGISTRY
+    assert "concept_card" in REGISTRY
+    assert "single_entity_card" in REGISTRY
+
+    # Each registry entry must be a callable that produces a UiPayload
+    for name in ("info_card", "concept_card", "single_entity_card"):
+        builder = REGISTRY[name]
+        payload = builder({}, sources=[])
+        assert payload.recipe == name
