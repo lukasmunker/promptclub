@@ -4,7 +4,7 @@ mcpServers:
   # Rebuild / redeploy with `./deploy.sh` from the repo root.
   pharmafuse-mcp:
     type: streamable-http
-    url: https://mcp-yallah-4hlbn744qa-ew.a.run.app/mcp
+    url: https://pharmafuse-mcp-4hlbn744qa-ew.a.run.app/mcp
     timeout: 30000
     initTimeout: 15000
     serverInstructions: true
