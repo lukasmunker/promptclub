@@ -86,7 +86,16 @@ def envelope_to_llm_text(envelope: dict[str, Any]) -> str:
 def _format_with_artifact(
     ui: dict[str, Any], sources: list[dict[str, Any]]
 ) -> str:
-    """Pre-assemble the :::artifact{…}::: block the LLM should paste."""
+    """Pre-assemble the :::artifact{…}::: block the LLM should paste.
+
+    The tool result deliberately STARTS with a one-line imperative
+    telling the LLM to paste the block below verbatim. We tried system-
+    prompt-level instructions ("MANDATORY: always include the artifact")
+    and still saw the LLM skip the block unless the user explicitly
+    asked for a visualization. Putting the instruction in-band — right
+    next to the thing it should copy — gets the LLM to reliably forward
+    the artifact to LibreChat's side pane.
+    """
     artifact = ui["artifact"]
     identifier = artifact["identifier"]
     art_type = artifact["type"]
@@ -100,7 +109,29 @@ def _format_with_artifact(
     )
 
     footer = _sources_footer(sources)
-    return f"{artifact_block}\n\n{footer}"
+
+    # In-band instruction. The LLM sees this BEFORE the artifact block and
+    # treats it as guidance-for-this-tool-result, not as content to echo.
+    # Phrasing:
+    #   - "ACTION REQUIRED" is a strong trigger phrase for tool-following
+    #   - The explicit "paste the :::artifact block below verbatim at the
+    #     start of your reply" tells it exactly what to do
+    #   - "do NOT write your own visualization / do NOT skip the block"
+    #     closes the two failure modes we saw in production
+    preamble = (
+        "ACTION REQUIRED — copy the :::artifact{…}::: block below into your "
+        "reply VERBATIM, as the very first thing you write. Do not rewrite "
+        "the HTML, do not paraphrase it, do not build your own alternative "
+        "visualization, and do not skip the block because you think prose "
+        "is enough. LibreChat only opens the side pane when the artifact "
+        "directive appears in your reply, so omitting it means the user "
+        "sees nothing. AFTER the artifact block you MAY add 2–5 sentences "
+        "of analysis that interpret the visualization. This applies to "
+        "every single tool call — the user does NOT need to ask for a "
+        "visualization, it is the default whenever a tool returns one."
+    )
+
+    return f"{preamble}\n\n{artifact_block}\n\n{footer}"
 
 
 # --- Text-only / SKIP path -------------------------------------------------
