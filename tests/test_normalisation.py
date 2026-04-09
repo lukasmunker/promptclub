@@ -1,5 +1,6 @@
 from app.models import (
     ComparisonResponse,
+    KnownDrugRecord,
     PublicationRecord,
     RegulatoryRecord,
     TargetAssociationRecord,
@@ -60,3 +61,61 @@ def test_lean_dump_strips_nested_raw_in_comparison_response():
 def test_lean_dump_handles_plain_dict_input():
     out = lean_dump({"a": 1, "raw": {"big": True}, "nested": [{"raw": "x", "k": "v"}]})
     assert out == {"a": 1, "nested": [{"k": "v"}]}
+
+
+# ---------------------------------------------------------------------------
+# evidence_path + KnownDrugRecord (deterministic-joins-provenance PR)
+# ---------------------------------------------------------------------------
+
+
+def test_trial_record_has_evidence_path_default_empty():
+    rec = TrialRecord(source="ct", source_id="NCT01")
+    assert rec.evidence_path == []
+
+
+def test_publication_record_evidence_path_roundtrip_through_lean_dump():
+    pub = PublicationRecord(
+        pmid="12345",
+        title="t",
+        evidence_path=[
+            "ctgov:NCT01227889",
+            "ctgov.referencesModule.pmid:12345",
+            "pubmed:12345",
+        ],
+        raw={"xml": "should be stripped"},
+    )
+    out = lean_dump(pub)
+    assert "raw" not in out
+    assert out["evidence_path"] == [
+        "ctgov:NCT01227889",
+        "ctgov.referencesModule.pmid:12345",
+        "pubmed:12345",
+    ]
+
+
+def test_known_drug_record_minimal():
+    rec = KnownDrugRecord(
+        target_id="ENSG00000188389",
+        target_symbol="PDCD1",
+        drug_id="CHEMBL1201580",
+        drug_name="PEMBROLIZUMAB",
+        drug_type="Antibody",
+        max_clinical_stage="APPROVAL",
+        trade_names=["Keytruda"],
+        indications=["melanoma", "non-small cell lung carcinoma"],
+        indication_ids=["EFO_0000756", "EFO_0003060"],
+        trial_ids=["NCT01295827", "NCT02142738"],
+        evidence_path=[
+            "opentargets:target/ENSG00000188389",
+            "opentargets:drug/CHEMBL1201580",
+            "opentargets:drugAndClinicalCandidates",
+        ],
+    )
+    assert rec.target_symbol == "PDCD1"
+    assert rec.drug_name == "PEMBROLIZUMAB"
+    assert "Keytruda" in rec.trade_names
+    assert len(rec.evidence_path) == 3
+    out = lean_dump(rec)
+    assert "raw" not in out
+    assert out["drug_name"] == "PEMBROLIZUMAB"
+    assert out["evidence_path"][0] == "opentargets:target/ENSG00000188389"

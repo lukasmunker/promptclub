@@ -29,19 +29,49 @@ ROUTING RULES — choose the right tool for the question:
 - "Tell me about NCT[ID]" → get_trial_details
 - "Find papers / publications about [topic]" → search_publications
 - "What targets are associated with [disease]?" → resolve_disease then get_target_context
+- "Which drugs target gene/protein X and what trials use them?" → get_known_drugs_for_target
 - "Is [drug] FDA approved? / regulatory context" → get_regulatory_context
 - "Latest news / recent developments" → web_context_search
 - "Is the system working?" → test_data_sources
 
-GUARDRAILS:
+GUARDRAILS — these are non-negotiable and audit-grade:
 - Do NOT make forward-looking investment, regulatory, or clinical outcome predictions.
 - Do NOT speculate beyond what the data sources explicitly state.
-- Always surface source citations from the tool response.
+- If a tool result has `no_data: true`, you MUST tell the user no data was found and you
+  MUST NOT supplement the answer with knowledge from your training data. State the gap
+  explicitly: "No records were found in [source] for [query]."
+- Every claim that cites an NCT id, PMID, EFO id, ChEMBL id or URL MUST appear verbatim
+  in the tool output. Do not paraphrase numerical values, dates, or identifiers — quote
+  them as returned. Do not construct URLs from patterns; only cite urls from `citations[]`.
+- Use `evidence_path` (when present on a record) to attribute each claim to a specific
+  data source chain. If two records share an evidence_path, treat them as the same fact.
+- Trial↔Publication links: a publication's evidence_path beginning with `ctgov.referencesModule.pmid:`
+  is a deterministic link declared by the trial sponsor. Treat that as authoritative.
+  A path containing `pubmed-search:abstract-regex-NCT` is a heuristic fallback — flag as
+  "weak link" if you rely on it.
 - Medical abbreviations (NSCLC, HCC, TNBC, etc.) and trade names (Keytruda, Opdivo) are
   automatically expanded — pass them as-is to the tools.
 - Prefer parallel tool calls when multiple independent data sources are needed.
 """,
 )
+
+
+def _maybe_no_data(rows: list[Any], source: str, query_descriptor: str) -> dict[str, Any] | None:
+    """Return an empty-result envelope with a strong instruction not to supplement
+    from training knowledge. Returns None if rows is non-empty (caller proceeds normally)."""
+    if rows:
+        return None
+    return {
+        "count": 0,
+        "results": [],
+        "no_data": True,
+        "source": source,
+        "query": query_descriptor,
+        "do_not_supplement": (
+            f"No records were found in {source} for {query_descriptor!r}. "
+            "Tell the user no data is available; do NOT answer from training knowledge."
+        ),
+    }
 
 
 @mcp.tool()
@@ -101,6 +131,9 @@ async def search_publications(query: str, page_size: int = 10) -> dict[str, Any]
     Returns title, abstract, authors, journal, pub date, and linked trial IDs (NCT numbers).
     """
     pubs = await orchestrator.search_publications(query=query, page_size=page_size)
+    empty = _maybe_no_data(pubs, source="PubMed", query_descriptor=query)
+    if empty is not None:
+        return empty
     return {"count": len(pubs), "results": [lean_dump(p) for p in pubs]}
 
 
@@ -115,6 +148,36 @@ async def get_target_context(disease_id: str) -> dict[str, Any]:
     Returns ranked targets with association scores from genetics, literature, and pathway data.
     """
     rows = await orchestrator.get_target_context(disease_id=disease_id)
+    empty = _maybe_no_data(rows, source="Open Targets", query_descriptor=f"disease_id={disease_id}")
+    if empty is not None:
+        return empty
+    return {"count": len(rows), "results": [lean_dump(r) for r in rows]}
+
+
+@mcp.tool()
+async def get_known_drugs_for_target(ensembl_id: str, page_size: int = 25) -> dict[str, Any]:
+    """
+    Return drugs developed against a target with their indications and trial IDs —
+    the deterministic Drug↔Target↔Trial join from Open Targets `drugAndClinicalCandidates`.
+
+    USE THIS WHEN: The user asks "which drugs target gene X?", "what compounds hit
+    PD-1?", "show me the pipeline for ENSG...", or any question that needs to connect
+    a target/gene/protein to the drugs developed against it AND the trials those drugs
+    appear in. Requires an Ensembl gene ID (e.g. ENSG00000188389 for PDCD1 / PD-1).
+    Each row carries an `evidence_path` documenting the deterministic chain
+    `target → drug → trial`, so the LLM never has to guess whether a drug from
+    openFDA matches an intervention from CT.gov. Use after `get_target_context`
+    when the user wants to drill from disease → targets → drugs → trials.
+    """
+    rows = await orchestrator.get_known_drugs_for_target(
+        ensembl_id=ensembl_id, page_size=page_size
+    )
+    empty = _maybe_no_data(
+        rows, source="Open Targets drugAndClinicalCandidates",
+        query_descriptor=f"ensembl_id={ensembl_id}",
+    )
+    if empty is not None:
+        return empty
     return {"count": len(rows), "results": [lean_dump(r) for r in rows]}
 
 
@@ -129,6 +192,9 @@ async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
     active ingredients, application numbers, and manufacturer.
     """
     rows = await orchestrator.get_regulatory_context(drug_name=drug_name)
+    empty = _maybe_no_data(rows, source="openFDA", query_descriptor=f"drug_name={drug_name}")
+    if empty is not None:
+        return empty
     return {"count": len(rows), "results": [lean_dump(r) for r in rows]}
 
 
@@ -143,6 +209,9 @@ async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
     get_target_context if you only have a free-text disease name.
     """
     rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
+    empty = _maybe_no_data(rows, source="Open Targets disease ontology", query_descriptor=query)
+    if empty is not None:
+        return empty
     return {"count": len(rows), "results": [lean_dump(r) for r in rows]}
 
 

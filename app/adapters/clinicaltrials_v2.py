@@ -189,6 +189,12 @@ class ClinicalTrialsV2Adapter:
             if ref.get("pmid")
         ])
 
+        evidence: list[str] = []
+        if nct_id:
+            evidence.append(f"ctgov:{nct_id}")
+        if linked_pmids:
+            evidence.append(f"ctgov.referencesModule.pmids:{','.join(linked_pmids[:5])}")
+
         return TrialRecord(
             source="ClinicalTrials.gov",
             source_id=nct_id or brief_title or "unknown",
@@ -216,6 +222,7 @@ class ClinicalTrialsV2Adapter:
             keywords=keywords,
             linked_pmids=linked_pmids,
             retrieved_at=datetime.now(timezone.utc).isoformat(),
+            evidence_path=evidence,
             citations=[
                 Citation(
                     source="ClinicalTrials.gov",

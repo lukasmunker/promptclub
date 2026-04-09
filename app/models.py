@@ -19,6 +19,7 @@ class DiseaseResolutionRecord(BaseModel):
     disease_name: str
     entity: str | None = None
     description: str | None = None
+    evidence_path: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(default_factory=list)
     raw: dict[str, Any] | None = None
 
@@ -46,6 +47,7 @@ class TrialRecord(BaseModel):
     keywords: list[str] = Field(default_factory=list)
     linked_pmids: list[str] = Field(default_factory=list)
     retrieved_at: str | None = None
+    evidence_path: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(default_factory=list)
     raw: dict[str, Any] | None = None
 
@@ -59,6 +61,7 @@ class PublicationRecord(BaseModel):
     abstract: str | None = None
     authors: list[str] = Field(default_factory=list)
     linked_trial_ids: list[str] = Field(default_factory=list)
+    evidence_path: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(default_factory=list)
     raw: dict[str, Any] | None = None
 
@@ -71,6 +74,7 @@ class TargetAssociationRecord(BaseModel):
     target_symbol: str | None = None
     target_name: str | None = None
     score: float | None = None
+    evidence_path: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(default_factory=list)
     raw: dict[str, Any] | None = None
 
@@ -85,6 +89,7 @@ class RegulatoryRecord(BaseModel):
     route: list[str] = Field(default_factory=list)
     active_ingredients: list[str] = Field(default_factory=list)
     warnings: str | None = None
+    evidence_path: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(default_factory=list)
     raw: dict[str, Any] | None = None
 
@@ -92,6 +97,33 @@ class RegulatoryRecord(BaseModel):
 class WebContextRecord(BaseModel):
     source: str = "Vertex Google Search"
     answer: str
+    evidence_path: list[str] = Field(default_factory=list)
+    citations: list[Citation] = Field(default_factory=list)
+    raw: dict[str, Any] | None = None
+
+
+class KnownDrugRecord(BaseModel):
+    """A drug-target-trial triple from Open Targets `drugAndClinicalCandidates`.
+
+    Each row represents one drug developed for one target, with the clinical
+    trials that exercise it. This is the deterministic Drug↔Target↔Trial join:
+    the LLM no longer has to guess whether 'Keytruda' in a regulatory record
+    matches 'pembrolizumab' in a trial intervention list.
+    """
+
+    source: str = "Open Targets"
+    target_id: str | None = None
+    target_symbol: str | None = None
+    drug_id: str | None = None
+    drug_name: str | None = None
+    drug_type: str | None = None
+    max_clinical_stage: str | None = None
+    trade_names: list[str] = Field(default_factory=list)
+    indications: list[str] = Field(default_factory=list)
+    indication_ids: list[str] = Field(default_factory=list)
+    trial_ids: list[str] = Field(default_factory=list)
+    trial_phases: list[str] = Field(default_factory=list)
+    evidence_path: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(default_factory=list)
     raw: dict[str, Any] | None = None
 
