@@ -105,6 +105,9 @@ async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
 # Create MCP ASGI app here to trigger lazy session_manager initialization
 # before the lifespan runs (session_manager is created on first call).
 _mcp_asgi = mcp.streamable_http_app()
+# Disable trailing-slash redirects inside the FastMCP Starlette sub-app.
+# Without this, POST /mcp is redirected 307 to /mcp/ and the body is lost.
+_mcp_asgi.router.redirect_slashes = False
 
 
 @asynccontextmanager
