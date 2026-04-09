@@ -1,10 +1,11 @@
-"""HTML recipe: target-disease associations from Open Targets.
+"""Inline Markdown recipe: target-disease associations from Open Targets.
 
-Renders as a ``text/html`` artifact — a scored table showing which protein
+Renders as a ``text/markdown`` envelope — a GFM table showing which protein
 targets are associated with a given disease, with the association score
-visualized as a small horizontal bar.
+visualized as a Unicode block-character bar (``████████░░``) so it appears
+inline in the chat bubble without needing the artifact pane.
 
-Works on the normalized shape produced by ``app.viz.adapters._normalize_target_associations``:
+Works on the normalized shape produced by ``app.viz.adapters._normalize_target_associations``::
 
     {
         "disease_id": "EFO_0000756",
@@ -25,12 +26,12 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
-from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
-__all__ = ["build", "MAX_ROWS"]
+__all__ = ["build", "MAX_ROWS", "BAR_WIDTH"]
 
 MAX_ROWS = 20
+BAR_WIDTH = 10  # Each bar is 10 characters wide (0.0 → 1.0 scaled)
 
 
 def build(data: dict[str, Any]) -> UiPayload:
@@ -46,43 +47,24 @@ def build(data: dict[str, Any]) -> UiPayload:
         reverse=True,
     )[:MAX_ROWS]
 
-    rows_html = "\n".join(_render_row(a) for a in associations_sorted)
+    rows_md = "\n".join(_row(a) for a in associations_sorted)
 
-    # Open Targets disease page link
-    opentargets_url = (
-        f"https://platform.opentargets.org/disease/{escape_html(disease_id)}"
+    opentargets_url = f"https://platform.opentargets.org/disease/{disease_id}"
+
+    raw = (
+        f"## {_md_escape(title)}\n\n"
+        f"_Source: Open Targets · Disease ID `{_md_escape_cell(disease_id)}` · "
+        f"[view on Open Targets]({_md_escape_url(opentargets_url)})_\n\n"
+        f"| Target | Name | Score |\n"
+        f"| --- | --- | --- |\n"
+        f"{rows_md}\n"
     )
-
-    raw = f"""<div class="p-4 font-sans text-gray-900">
-  <header class="mb-3 flex items-baseline justify-between border-b border-gray-200 pb-2">
-    <div>
-      <h2 class="text-base font-semibold">{escape_html(title)}</h2>
-      <p class="text-xs text-gray-500">Source: Open Targets · Disease ID <span class="font-mono">{escape_html(disease_id)}</span></p>
-    </div>
-    <a href="{opentargets_url}" target="_blank" rel="noopener"
-       class="text-xs text-blue-700 hover:underline">View on Open Targets →</a>
-  </header>
-  <table class="w-full text-sm">
-    <thead>
-      <tr class="text-left text-xs uppercase text-gray-500 border-b border-gray-200">
-        <th class="py-2 pr-3">Target</th>
-        <th class="py-2 pr-3">Name</th>
-        <th class="py-2 pr-3 w-40">Association Score</th>
-      </tr>
-    </thead>
-    <tbody>
-{rows_html}
-    </tbody>
-  </table>
-</div>"""
-
-    assert_safe_html(raw)
 
     return UiPayload(
         recipe="target_associations_table",
         artifact=ArtifactMeta(
             identifier=make_identifier("target_associations_table", disease_id),
-            type="text/html",
+            type="text/markdown",
             title=title,
         ),
         components=None,
@@ -92,46 +74,64 @@ def build(data: dict[str, Any]) -> UiPayload:
     )
 
 
-def _render_row(assoc: dict[str, Any]) -> str:
+# --- Row rendering ---------------------------------------------------------
+
+
+def _row(assoc: dict[str, Any]) -> str:
     symbol = assoc.get("target_symbol") or "?"
     name = assoc.get("target_name") or ""
     target_id = assoc.get("target_id") or ""
     score = assoc.get("score")
 
-    target_badge: str
+    # Symbol cell: linked to Open Targets if we have a target_id
     if target_id:
-        target_url = (
-            f"https://platform.opentargets.org/target/{escape_html(target_id)}"
-        )
-        target_badge = (
-            f'<a href="{target_url}" target="_blank" rel="noopener" '
-            f'class="font-mono text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 '
-            f'border border-blue-200 hover:bg-blue-100">{escape_html(symbol)}</a>'
+        symbol_cell = (
+            f"[`{_md_escape_cell(symbol)}`]"
+            f"(https://platform.opentargets.org/target/{_md_escape_url(target_id)})"
         )
     else:
-        target_badge = (
-            f'<span class="font-mono text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">'
-            f"{escape_html(symbol)}</span>"
-        )
+        symbol_cell = f"`{_md_escape_cell(symbol)}`"
 
-    # Render score as a horizontal bar using Tailwind widths + a number.
-    # Clamp to [0, 1] and convert to a 0-100 percent width for the bar.
+    name_cell = _md_escape_cell(_truncate(name, 60)) or "—"
+
+    # Score cell: ASCII bar + numeric value
     if isinstance(score, (int, float)):
         clamped = max(0.0, min(1.0, float(score)))
-        pct = round(clamped * 100)
-        score_cell = (
-            f'<div class="flex items-center gap-2">'
-            f'<div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">'
-            f'<div class="h-full bg-emerald-500" style="width: {pct}%"></div>'
-            f"</div>"
-            f'<span class="font-mono text-xs text-gray-700 tabular-nums w-10 text-right">'
-            f"{clamped:.2f}</span></div>"
-        )
+        filled = round(clamped * BAR_WIDTH)
+        bar = "█" * filled + "░" * (BAR_WIDTH - filled)
+        score_cell = f"`{bar}` {clamped:.2f}"
     else:
-        score_cell = '<span class="text-xs text-gray-400">—</span>'
+        score_cell = "—"
 
-    return f"""      <tr class="border-b border-gray-100">
-        <td class="py-2 pr-3 align-top">{target_badge}</td>
-        <td class="py-2 pr-3 align-top text-gray-700">{escape_html(name)}</td>
-        <td class="py-2 pr-3 align-top">{score_cell}</td>
-      </tr>"""
+    return f"| {symbol_cell} | {name_cell} | {score_cell} |"
+
+
+# --- Escaping helpers ------------------------------------------------------
+
+
+def _md_escape(text: object) -> str:
+    if text is None:
+        return ""
+    s = str(text)
+    return s.replace("\\", "\\\\").replace("_", "\\_").replace("*", "\\*")
+
+
+def _md_escape_cell(text: object) -> str:
+    if text is None:
+        return ""
+    s = str(text).replace("\n", " ").replace("\r", " ").strip()
+    return s.replace("|", "\\|")
+
+
+def _md_escape_url(url: object) -> str:
+    if url is None:
+        return ""
+    return str(url).replace(")", "%29").replace("(", "%28").replace(" ", "%20")
+
+
+def _truncate(text: str | None, max_len: int) -> str:
+    if not text:
+        return ""
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1].rstrip() + "…"

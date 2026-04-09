@@ -1,11 +1,13 @@
-"""Mermaid recipe: trial timelines as a gantt chart.
+"""Inline Markdown recipe: trial timelines as a mermaid gantt chart.
 
-Renders as an ``application/vnd.mermaid`` artifact — LibreChat has a dedicated
-``Mermaid.tsx`` renderer with zoom/pan.
+Renders as a ``text/markdown`` envelope with the mermaid gantt embedded in a
+``` ```mermaid ``` fenced code block. LibreChat's chat markdown pipeline has
+a dedicated ``code`` component that detects ``lang === 'mermaid'`` and
+mounts the ``Mermaid`` React renderer inline — so the gantt appears directly
+in the chat bubble without opening the artifact side pane.
 
-Produces a ``gantt`` diagram with one section per sponsor and one task row
-per trial. Labels are aggressively sanitized because Mermaid's parser chokes
-on colons, quotes, and unmatched parens in free-form labels.
+Labels are aggressively sanitized because Mermaid's parser chokes on colons,
+quotes, angle brackets, and unmatched parens in free-form labels.
 """
 
 from __future__ import annotations
@@ -35,13 +37,18 @@ def build(data: dict[str, Any]) -> UiPayload:
     title = data.get("title") or "Trial Timeline Comparison"
     query = data.get("query") or title
 
-    raw = _render_gantt(title, trials)
+    gantt = _render_gantt(title, trials)
+
+    # Wrap the mermaid source in a Markdown heading + fenced code block so the
+    # envelope's ui.raw is a self-contained markdown snippet the LLM can paste
+    # verbatim into the chat message.
+    raw = f"## {_md_escape(title)}\n\n```mermaid\n{gantt}\n```\n"
 
     return UiPayload(
         recipe="trial_timeline_gantt",
         artifact=ArtifactMeta(
             identifier=make_identifier("trial_timeline_gantt", query),
-            type="application/vnd.mermaid",
+            type="text/markdown",
             title=title,
         ),
         components=None,
@@ -73,7 +80,6 @@ def _render_gantt(title: str, trials: list[dict[str, Any]]) -> str:
             )
             nct = t.get("nct_id") or "trial"
             # Mermaid task syntax: Label :status, taskId, start, end
-            # status "active" renders in blue; "done" in gray; "crit" in red.
             # We use "active" uniformly — no speculation about which is "done".
             lines.append(
                 f"    {label} :active, {nct}, "
@@ -81,9 +87,17 @@ def _render_gantt(title: str, trials: list[dict[str, Any]]) -> str:
             )
 
     if not trials:
-        # Empty-state: render a gantt with a placeholder section so the artifact
-        # still parses. The decision layer should have caught this, but defense in depth.
+        # Empty-state: render a gantt with a placeholder section so the fence
+        # still parses. The decision layer should have caught this, but
+        # defense in depth.
         lines.append("    section No data")
         lines.append("    (no datable trials) :active, nodata, 2026-01-01, 2026-01-02")
 
     return "\n".join(lines)
+
+
+def _md_escape(text: object) -> str:
+    if text is None:
+        return ""
+    s = str(text)
+    return s.replace("\\", "\\\\").replace("_", "\\_").replace("*", "\\*")

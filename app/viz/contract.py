@@ -18,6 +18,7 @@ ArtifactType = Literal[
     "application/vnd.react",
     "text/html",
     "application/vnd.mermaid",
+    "text/markdown",
 ]
 
 SourceKind = Literal[

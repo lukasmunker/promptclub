@@ -125,8 +125,8 @@ def test_search_trials_envelope_from_comparison_response():
     assert "Cite sources" in env["render_hint"]
     assert "No forward-looking" in env["render_hint"]
     assert env["ui"]["recipe"] == "trial_search_results"
-    assert env["ui"]["artifact"]["type"] == "text/html"
-    # Both NCT IDs should appear in the rendered HTML
+    assert env["ui"]["artifact"]["type"] == "text/markdown"
+    # Both NCT IDs should appear in the rendered markdown
     assert "NCT01234567" in env["ui"]["raw"]
     assert "NCT02345678" in env["ui"]["raw"]
     # And in sources
@@ -178,7 +178,7 @@ def test_search_trials_flattens_phase_list():
         promptclub_data=response.model_dump(),
         query="x",
     )
-    # Phase 2/3 should be collapsed into a single slash-joined string in the raw HTML
+    # Phase 2/3 should be collapsed into a single slash-joined string in the raw markdown
     assert "Phase 2/Phase 3" in env["ui"]["raw"]
 
 
@@ -273,9 +273,11 @@ def test_search_publications_envelope():
         query="melanoma",
     )
     assert env["ui"]["recipe"] == "trial_search_results"
-    assert env["ui"]["artifact"]["type"] == "text/html"
-    assert "PMID 11111" in env["ui"]["raw"]
-    assert "PMID 22222" in env["ui"]["raw"]
+    assert env["ui"]["artifact"]["type"] == "text/markdown"
+    # PMIDs appear in markdown links to PubMed
+    assert "11111" in env["ui"]["raw"]
+    assert "22222" in env["ui"]["raw"]
+    assert "pubmed.ncbi.nlm.nih.gov" in env["ui"]["raw"]
     assert len(env["sources"]) == 2
     assert all(s["kind"] == "pubmed" for s in env["sources"])
 
@@ -330,7 +332,7 @@ def test_target_context_envelope():
         disease_id="EFO_0000756",
     )
     assert env["ui"]["recipe"] == "target_associations_table"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "text/markdown"
     # All three symbols present in the rendered table
     assert "BRAF" in env["ui"]["raw"]
     assert "KRAS" in env["ui"]["raw"]
@@ -390,7 +392,7 @@ def test_web_context_envelope():
         query="melanoma [Company]",
     )
     assert env["ui"]["recipe"] == "trial_search_results"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "text/markdown"
     assert len(env["sources"]) == 2
     assert all(s["kind"] == "web" for s in env["sources"])
 
@@ -437,10 +439,12 @@ def test_build_trial_comparison_envelope_renders_gantt():
         },
     )
     assert env["ui"]["recipe"] == "trial_timeline_gantt"
-    assert env["ui"]["artifact"]["type"] == "application/vnd.mermaid"
+    assert env["ui"]["artifact"]["type"] == "text/markdown"
     raw = env["ui"]["raw"]
-    # Mermaid gantt header + all 3 NCTs
-    assert raw.startswith("gantt")
+    # Inline markdown wraps the mermaid source in a ```mermaid fence
+    assert raw.startswith("## ")
+    assert "```mermaid" in raw
+    assert "gantt" in raw
     assert "NCT00000001" in raw
     assert "NCT00000002" in raw
     assert "NCT00000003" in raw
@@ -497,7 +501,7 @@ def test_build_trial_comparison_missing_dates_falls_back_to_cards():
     )
     # Decision falls back to sponsor_pipeline_cards when dates are missing
     assert env["ui"]["recipe"] == "sponsor_pipeline_cards"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "text/markdown"
 
 
 # --- analyze_whitespace adapter + recipe (NEW) ------------------------------
@@ -520,14 +524,14 @@ def test_analyze_whitespace_envelope_renders_card():
         promptclub_data=payload,
     )
     assert env["ui"]["recipe"] == "whitespace_card"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "text/markdown"
     raw = env["ui"]["raw"]
-    # All numbers surface in the rendered tiles
+    # All numbers surface in the rendered markdown table
     assert "42" in raw
     assert "78" in raw
     assert "35" in raw
     assert "95" in raw
-    # Both signals are rendered
+    # Both signals are rendered as warning-emoji bullets
     assert "Few Phase 3 trials" in raw
     assert "Limited recent publications" in raw
     # Title includes the condition
