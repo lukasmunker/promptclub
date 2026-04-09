@@ -9,6 +9,7 @@ from app.viz.contract import UiPayload
 from app.viz.recipes import (
     indication_dashboard,
     sponsor_pipeline_cards,
+    target_associations_table,
     trial_detail_tabs,
     trial_search_results,
     trial_timeline_gantt,
@@ -259,12 +260,16 @@ def test_indication_dashboard_imports_are_valid(indication_landscape_nsclc):
 
 def test_indication_dashboard_panels_match_data(indication_landscape_nsclc):
     payload = indication_dashboard.build(indication_landscape_nsclc)
-    # Root should be a grid div with one panel per data section
+    # Root is a `p-4` wrapper div; first child is the grid, remaining children
+    # (if any) are the citation footer paragraph.
     root = payload.blueprint[0]
     assert root.component == "div"
+    assert root.children is not None and len(root.children) >= 1
+    grid = root.children[0]
+    assert grid.component == "div"
     # 4 sections in fixture → 4 Card panels
-    assert root.children is not None
-    assert len(root.children) == 4
+    assert grid.children is not None
+    assert len(grid.children) == 4
 
 
 def test_indication_dashboard_caps_sponsors_at_20():
@@ -295,8 +300,10 @@ def test_indication_dashboard_skips_missing_panels():
     }
     payload = indication_dashboard.build(data)
     root = payload.blueprint[0]
+    # root is the p-4 wrapper; first child is the grid
+    grid = root.children[0]
     # Only 1 panel (phase)
-    assert len(root.children) == 1
+    assert len(grid.children) == 1
 
 
 # --- trial_detail_tabs (React) ---------------------------------------------
@@ -532,3 +539,140 @@ def test_whitespace_card_handles_no_signals():
     }
     payload = whitespace_card.build(data)
     assert "No specific whitespace signals" in payload.raw
+
+
+# --- Citation footer (all recipes) -----------------------------------------
+
+
+from datetime import datetime, timezone  # noqa: E402
+
+from app.viz.contract import Source  # noqa: E402
+
+_SAMPLE_SOURCES = [
+    Source(
+        kind="clinicaltrials.gov",
+        id="NCT01234567",
+        url="https://clinicaltrials.gov/study/NCT01234567",
+        retrieved_at=datetime(2026, 4, 9, 12, 0, 0, tzinfo=timezone.utc),
+    ),
+    Source(
+        kind="clinicaltrials.gov",
+        id="NCT02345678",
+        url="https://clinicaltrials.gov/study/NCT02345678",
+        retrieved_at=datetime(2026, 4, 9, 12, 0, 0, tzinfo=timezone.utc),
+    ),
+    Source(
+        kind="pubmed",
+        id="12345678",
+        url="https://pubmed.ncbi.nlm.nih.gov/12345678/",
+        retrieved_at=datetime(2026, 4, 9, 12, 0, 0, tzinfo=timezone.utc),
+    ),
+]
+
+
+def test_trial_search_results_embeds_source_footer(search_melanoma_phase3):
+    payload = trial_search_results.build(search_melanoma_phase3, sources=_SAMPLE_SOURCES)
+    # Footer mentions both source kinds (as markdown links with hub URLs)
+    # and the retrieved date.
+    assert "_Source:" in payload.raw
+    assert "[ClinicalTrials.gov]" in payload.raw  # linked name
+    assert "(2)" in payload.raw  # count annotation (2 CT.gov citations)
+    assert "[PubMed]" in payload.raw
+    assert "Retrieved 2026-04-09" in payload.raw
+
+
+def test_trial_search_results_no_footer_when_no_sources(search_melanoma_phase3):
+    payload = trial_search_results.build(search_melanoma_phase3, sources=None)
+    # No footer appended when sources is None or empty.
+    assert "_Source:" not in payload.raw
+
+
+def test_target_associations_embeds_source_footer():
+    data = {
+        "disease_id": "EFO_0000756",
+        "disease_name": "melanoma",
+        "associations": [
+            {"target_symbol": "BRAF", "score": 0.9, "target_id": "ENSG01"},
+            {"target_symbol": "KRAS", "score": 0.8, "target_id": "ENSG02"},
+        ],
+    }
+    payload = target_associations_table.build(
+        data,
+        sources=[
+            Source(
+                kind="opentargets",
+                id="EFO_0000756",
+                url="https://platform.opentargets.org/disease/EFO_0000756",
+                retrieved_at=datetime(2026, 4, 9, tzinfo=timezone.utc),
+            )
+        ],
+    )
+    # Recipe-specific disease context line still present
+    assert "Disease ID `EFO_0000756`" in payload.raw
+    # Plus the generic source footer
+    assert "_Source: [Open Targets]" in payload.raw
+    assert "Retrieved 2026-04-09" in payload.raw
+
+
+def test_sponsor_pipeline_cards_embeds_source_footer(compare_trials_many):
+    payload = sponsor_pipeline_cards.build(compare_trials_many, sources=_SAMPLE_SOURCES)
+    assert "_Source:" in payload.raw
+    assert "[ClinicalTrials.gov]" in payload.raw
+    assert "(2)" in payload.raw
+
+
+def test_whitespace_card_embeds_source_footer():
+    payload = whitespace_card.build(_WHITESPACE_FIXTURE, sources=_SAMPLE_SOURCES)
+    assert "_Source:" in payload.raw
+    assert "[ClinicalTrials.gov]" in payload.raw
+    assert "[PubMed]" in payload.raw
+    assert "(2)" in payload.raw  # 2 CT.gov citations in the sample
+
+
+def test_trial_timeline_gantt_embeds_source_footer(compare_trials_three):
+    payload = trial_timeline_gantt.build(compare_trials_three, sources=_SAMPLE_SOURCES)
+    # Footer is AFTER the mermaid fence closing — make sure order is correct
+    assert "```mermaid" in payload.raw
+    assert "```" in payload.raw
+    assert "_Source:" in payload.raw
+    # Source line must come after the closing mermaid fence (not inside it)
+    source_idx = payload.raw.index("_Source:")
+    closing_fence_idx = payload.raw.rindex("```")
+    assert source_idx > closing_fence_idx
+
+
+def test_trial_detail_tabs_embeds_source_footer_blueprint(trial_details_nct01):
+    payload = trial_detail_tabs.build(
+        trial_details_nct01,
+        sources=[
+            Source(
+                kind="clinicaltrials.gov",
+                id="NCT01234567",
+                url="https://clinicaltrials.gov/study/NCT01234567",
+                retrieved_at=datetime(2026, 4, 9, tzinfo=timezone.utc),
+            )
+        ],
+    )
+    # The root div's last child should be a <p> with the source text
+    root = payload.blueprint[0]
+    assert root.children is not None
+    last_child = root.children[-1]
+    assert last_child.component == "p"
+    assert last_child.text is not None
+    assert "Source:" in last_child.text
+    assert "ClinicalTrials.gov" in last_child.text
+
+
+def test_indication_dashboard_embeds_source_footer_blueprint(indication_landscape_nsclc):
+    payload = indication_dashboard.build(
+        indication_landscape_nsclc,
+        sources=_SAMPLE_SOURCES,
+    )
+    # Root wrapper's children = [grid, footer <p>]
+    root = payload.blueprint[0]
+    assert root.children is not None
+    assert len(root.children) == 2  # grid + footer paragraph
+    footer = root.children[1]
+    assert footer.component == "p"
+    assert "Source:" in footer.text
+    assert "ClinicalTrials.gov" in footer.text

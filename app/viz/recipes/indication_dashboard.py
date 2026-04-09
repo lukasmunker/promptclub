@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, BlueprintNode, ComponentImport, UiPayload
+from app.viz.utils.citations import format_source_footer_text
 from app.viz.utils.identifiers import make_identifier
 
 __all__ = ["build", "MAX_SPONSORS_IN_BAR"]
@@ -25,7 +26,10 @@ __all__ = ["build", "MAX_SPONSORS_IN_BAR"]
 MAX_SPONSORS_IN_BAR = 20
 
 
-def build(data: dict[str, Any]) -> UiPayload:
+def build(
+    data: dict[str, Any],
+    sources: list[Any] | None = None,
+) -> UiPayload:
     indication = data.get("indication") or "Indication"
     title = data.get("title") or f"{indication} Landscape"
 
@@ -55,12 +59,33 @@ def build(data: dict[str, Any]) -> UiPayload:
         # Shouldn't happen — decision layer should skip in this case — but be defensive
         panels = [_empty_state_panel(indication)]
 
+    # Wrap the grid in a vertical stack so we can append the citation footer
+    # paragraph beneath it.
+    grid = BlueprintNode(
+        component="div",
+        props={"className": "grid md:grid-cols-2 gap-4"},
+        children=panels,
+    )
+
+    root_children: list[BlueprintNode] = [grid]
+    footer_text = format_source_footer_text(sources)
+    if footer_text:
+        root_children.append(
+            BlueprintNode(
+                component="p",
+                props={
+                    "className": "mt-4 text-xs text-gray-500 italic text-center"
+                },
+                text=footer_text,
+            )
+        )
+
     components = _components()
     blueprint: list[BlueprintNode] = [
         BlueprintNode(
             component="div",
-            props={"className": "grid md:grid-cols-2 gap-4 p-4"},
-            children=panels,
+            props={"className": "p-4"},
+            children=root_children,
         )
     ]
 

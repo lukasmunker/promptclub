@@ -26,6 +26,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.utils.citations import format_source_footer
 from app.viz.utils.identifiers import make_identifier
 
 __all__ = ["build", "MAX_ROWS", "BAR_WIDTH"]
@@ -34,7 +35,10 @@ MAX_ROWS = 20
 BAR_WIDTH = 10  # Each bar is 10 characters wide (0.0 → 1.0 scaled)
 
 
-def build(data: dict[str, Any]) -> UiPayload:
+def build(
+    data: dict[str, Any],
+    sources: list[Any] | None = None,
+) -> UiPayload:
     disease_name = data.get("disease_name") or "Disease"
     disease_id = data.get("disease_id") or "unknown"
     title = f"Target Associations — {disease_name}"
@@ -51,13 +55,23 @@ def build(data: dict[str, Any]) -> UiPayload:
 
     opentargets_url = f"https://platform.opentargets.org/disease/{disease_id}"
 
+    # Always show the disease-specific Open Targets context line — this is
+    # recipe-specific info (the EFO ID) that doesn't fit the generic footer.
+    # The generic source footer (counts + retrieved_at) is appended below.
+    disease_context = (
+        f"_Disease ID `{_md_escape_cell(disease_id)}` · "
+        f"[view on Open Targets]({_md_escape_url(opentargets_url)})_\n\n"
+    )
+
+    source_footer = format_source_footer(sources)
+
     raw = (
         f"## {_md_escape(title)}\n\n"
-        f"_Source: Open Targets · Disease ID `{_md_escape_cell(disease_id)}` · "
-        f"[view on Open Targets]({_md_escape_url(opentargets_url)})_\n\n"
+        f"{disease_context}"
         f"| Target | Name | Score |\n"
         f"| --- | --- | --- |\n"
         f"{rows_md}\n"
+        f"{source_footer}"
     )
 
     return UiPayload(
