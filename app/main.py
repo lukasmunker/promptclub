@@ -94,9 +94,17 @@ Every MCP tool in this server returns a plain-text result. That text is
 already pre-formatted for you. Your job is to paste the relevant parts
 of it into your reply.
 
-THE TOOL RESPONSE HAS ONE OF THREE SHAPES:
+THE TOOL RESPONSE ALWAYS HAS THE SAME SHAPE:
 
-(1) Visualization result — starts with a ``:::artifact{…}:::`` directive:
+Every tool result starts with an ``ACTION REQUIRED`` preamble line followed
+by exactly one ``:::artifact{…}:::`` directive. There are no other shapes
+anymore — empty results, definition queries, single-entity lookups, and
+unknown tools all produce a fallback info-card / concept-card / single-
+entity-card artifact. The legacy ``[NO VISUALIZATION]`` and
+``[NO DATA AVAILABLE]`` markers no longer exist in the wire format.
+
+    ACTION REQUIRED — copy the :::artifact{…}::: block below into your
+    reply VERBATIM, as the very first thing you write. ...
 
     :::artifact{identifier="..." type="html" title="..."}
     <div class="...">
@@ -111,42 +119,19 @@ THE TOOL RESPONSE HAS ONE OF THREE SHAPES:
       - [clinicaltrials.gov] NCT01234567 https://clinicaltrials.gov/study/NCT01234567
       - [pubmed] 12345678 https://pubmed.ncbi.nlm.nih.gov/12345678/
 
-    MANDATORY: Copy the ENTIRE ``:::artifact{…}:::`` block (from the opening
-    ``:::artifact`` line through the closing ``:::``) into your reply
-    VERBATIM. Do not rewrite, reformat, paraphrase, truncate, or reorder
-    the HTML / Mermaid inside the fence. Do not wrap a Mermaid diagram in
-    a ```mermaid fence — the artifact directive already declares the type.
+MANDATORY: Copy the ENTIRE ``:::artifact{…}:::`` block (from the opening
+``:::artifact`` line through the closing ``:::``) into your reply
+VERBATIM. Do not rewrite, reformat, paraphrase, truncate, or reorder
+the HTML / Mermaid inside the fence. Do not wrap a Mermaid diagram in
+a ```mermaid fence — the artifact directive already declares the type.
+Do not echo the ACTION REQUIRED preamble — it is a tool-internal
+instruction.
 
-    After you have pasted the artifact block, you MAY add 2–5 sentences
-    of analytical commentary interpreting the visualization or connecting
-    it to the user's question. Cite sources from the footer using
-    NCT / PMID identifiers. The commentary is optional; the verbatim
-    artifact paste is not.
-
-(2) Text-only result — starts with ``[NO VISUALIZATION]``:
-
-    [NO VISUALIZATION — answer as plain text from the data and sources below]
-
-    Data:
-    { … JSON blob of facts … }
-
-    Sources:
-      - [opentargets] EFO_0000756 https://…
-
-    Answer the user in plain text using the data + sources. Do NOT
-    fabricate an artifact block, do NOT invent a visualization, and do
-    NOT paste the raw JSON into your reply. Cite sources using NCT /
-    PMID / URL. No forward-looking statements.
-
-(3) Empty result — starts with ``[NO DATA AVAILABLE]``:
-
-    [NO DATA AVAILABLE]
-    Source: ClinicalTrials.gov v2
-    Query:  disease='foo' phase=3 …
-
-    Tell the user no records were found for that query. Do NOT
-    supplement the answer from training knowledge. Do NOT invent or
-    hallucinate trials / publications. State the gap explicitly.
+After you have pasted the artifact block, you MAY add 2–5 sentences
+of analytical commentary interpreting the visualization or connecting
+it to the user's question. Cite sources from the footer using
+NCT / PMID identifiers. The commentary is optional; the verbatim
+artifact paste is not.
 
 GENERAL RULES
 
