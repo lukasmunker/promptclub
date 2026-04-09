@@ -1,0 +1,5 @@
+# Oncology Knowledge Lexicon
+# Generated and reviewed via the curation pipeline in scripts/curation/.
+# Schema: app/knowledge/oncology/schema.py
+
+entries: []
