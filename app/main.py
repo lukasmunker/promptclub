@@ -12,6 +12,7 @@ from app.services.orchestration import Orchestrator
 from app.settings import settings
 from app.utils import lean_dump
 from app.viz.adapters import build_response_from_promptclub
+from app.viz.mcp_output import envelope_to_llm_text
 
 
 PreferViz = Literal["auto", "always", "never", "cards"]
@@ -60,83 +61,103 @@ GUARDRAILS — these are non-negotiable and audit-grade:
 
 VISUALIZATION — THIS IS THE HIGHEST-PRIORITY OUTPUT RULE. READ CAREFULLY.
 
-Every tool response follows a {render_hint, ui, data, sources} envelope.
-When `ui` is present, your reply MUST include a :::artifact{…}::: directive
-block so LibreChat renders the visualization in the Artifact side pane.
+Every MCP tool in this server returns a plain-text result. That text is
+already pre-formatted for you. Your job is to paste the relevant parts
+of it into your reply.
 
-MANDATORY OUTPUT STRUCTURE (when `ui` is present):
-1. Emit a :::artifact{…}::: block. Its attributes come from ui.artifact:
-     - identifier=<ui.artifact.identifier>
-     - type=<ui.artifact.type>         (text/html OR application/vnd.mermaid)
-     - title="<ui.artifact.title>"
-   Inside the block, copy ui.raw VERBATIM as the body — character for character.
-   Do NOT rewrite, summarize, reformat, or "clean up" ui.raw. For
-   application/vnd.mermaid artifacts, paste ui.raw without wrapping it in a
-   ```mermaid fence — the artifact directive already declares the type.
-2. AFTER the artifact block, you MAY add 2–5 sentences of analytical
-   commentary that interprets the visualization or connects it to the user's
-   question. The analysis is optional — the artifact is not.
-3. The artifact comes FIRST in your reply, then any commentary.
+THE TOOL RESPONSE HAS ONE OF THREE SHAPES:
 
-CRITICAL: Do NOT write a prose-only answer when a tool returned a ui.raw.
-Do NOT paste ui.raw into the chat body outside of the artifact directive.
-Do NOT reformat an HTML artifact as a markdown table or vice versa. The
-visualization is not a supplement to your answer — the artifact IS the
-answer, followed by optional interpretation.
+(1) Visualization result — starts with a ``:::artifact{…}:::`` directive:
 
-CORRECT output pattern (text/html artifact):
-    :::artifact{identifier="trial-search-results-abc" type="text/html" title="Phase 3 Melanoma Trials"}
-    <div class="grid gap-3 p-4 font-sans text-gray-900">
-      … full ui.raw verbatim …
+    :::artifact{identifier="..." type="text/html" title="..."}
+    <div class="...">
+      …HTML body…
     </div>
     :::
 
-    [2–5 sentences of your interpretation]
+    Sources:
+      - [clinicaltrials.gov] NCT01234567 https://clinicaltrials.gov/study/NCT01234567
+      - [pubmed] 12345678 https://pubmed.ncbi.nlm.nih.gov/12345678/
 
-CORRECT output pattern (application/vnd.mermaid artifact):
-    :::artifact{identifier="trial-timeline-gantt-xyz" type="application/vnd.mermaid" title="Trial Timeline Comparison"}
-    gantt
-        dateFormat  YYYY-MM-DD
-        title       Trial Timeline Comparison
-        … full ui.raw verbatim …
-    :::
+    MANDATORY: Copy the ENTIRE ``:::artifact{…}:::`` block (from the opening
+    ``:::artifact`` line through the closing ``:::``) into your reply
+    VERBATIM. Do not rewrite, reformat, paraphrase, truncate, or reorder
+    the HTML / Mermaid inside the fence. Do not wrap a Mermaid diagram in
+    a ```mermaid fence — the artifact directive already declares the type.
 
-    [2–5 sentences of your interpretation]
+    After you have pasted the artifact block, you MAY add 2–5 sentences
+    of analytical commentary interpreting the visualization or connecting
+    it to the user's question. Cite sources from the footer using
+    NCT / PMID identifiers. The commentary is optional; the verbatim
+    artifact paste is not.
 
-WRONG output patterns (never do these):
-    ❌ Writing a prose-only answer that cites the data but omits the artifact block
-    ❌ Pasting ui.raw into the chat body without the :::artifact fence
-    ❌ Rewriting the HTML into markdown or bullet lists
-    ❌ Wrapping a Mermaid ui.raw in a ```mermaid code fence inside the artifact
-    ❌ Changing, reordering, or summarizing the ui.raw content
+(2) Text-only result — starts with ``[NO VISUALIZATION]``:
 
-When the same tool is called multiple times or multiple tools are called in
-parallel, include EVERY returned artifact in your reply, each in its own
-:::artifact fence, in the order the tools were called. Separate them with
-a blank line.
+    [NO VISUALIZATION — answer as plain text from the data and sources below]
 
-When `ui` is absent (render_hint = the SKIP template), answer in plain text
-from `data`. Still cite sources by NCT/PMID from the `sources` field.
+    Data:
+    { … JSON blob of facts … }
+
+    Sources:
+      - [opentargets] EFO_0000756 https://…
+
+    Answer the user in plain text using the data + sources. Do NOT
+    fabricate an artifact block, do NOT invent a visualization, and do
+    NOT paste the raw JSON into your reply. Cite sources using NCT /
+    PMID / URL. No forward-looking statements.
+
+(3) Empty result — starts with ``[NO DATA AVAILABLE]``:
+
+    [NO DATA AVAILABLE]
+    Source: ClinicalTrials.gov v2
+    Query:  disease='foo' phase=3 …
+
+    Tell the user no records were found for that query. Do NOT
+    supplement the answer from training knowledge. Do NOT invent or
+    hallucinate trials / publications. State the gap explicitly.
+
+GENERAL RULES
+
+- Never invent, fabricate, or hand-write your own ``:::artifact{…}:::``
+  block. Only paste the one the tool response gave you.
+- Never rewrite an HTML artifact as markdown, bullet lists, or prose.
+- Never rewrite a Mermaid artifact as ASCII art or a table.
+- Never write a prose-only reply when the tool returned a ``:::artifact``
+  block — the user wants to SEE the visualization.
+- When multiple tools are called in parallel, include EVERY returned
+  ``:::artifact{…}:::`` block in your reply, each copied verbatim, in
+  the order the tools were called, separated by a blank line.
+
+COMPLIANCE
+- Cite sources using NCT / PMID / URL.
+- No forward-looking investment, regulatory, or clinical-outcome predictions.
+- No BioNTech strategic recommendations.
 """,
 )
 
 
-def _maybe_no_data(rows: list[Any], source: str, query_descriptor: str) -> dict[str, Any] | None:
-    """Return an empty-result envelope with a strong instruction not to supplement
-    from training knowledge. Returns None if rows is non-empty (caller proceeds normally)."""
+def _maybe_no_data(rows: list[Any], source: str, query_descriptor: str) -> str | None:
+    """Return a pre-formatted ``[NO DATA AVAILABLE]`` tool-text string when
+    ``rows`` is empty, or ``None`` if the caller should proceed with normal
+    envelope building.
+
+    The returned string goes through ``envelope_to_llm_text`` via the legacy
+    no-data dict shape so every MCP tool emits the same format regardless of
+    which path it took.
+    """
     if rows:
         return None
-    return {
-        "count": 0,
-        "results": [],
-        "no_data": True,
-        "source": source,
-        "query": query_descriptor,
-        "do_not_supplement": (
-            f"No records were found in {source} for {query_descriptor!r}. "
-            "Tell the user no data is available; do NOT answer from training knowledge."
-        ),
-    }
+    return envelope_to_llm_text(
+        {
+            "no_data": True,
+            "source": source,
+            "query": query_descriptor,
+            "do_not_supplement": (
+                f"No records were found in {source} for {query_descriptor!r}. "
+                "Tell the user no data is available; do NOT answer from training knowledge."
+            ),
+        }
+    )
 
 
 @mcp.tool()
@@ -147,7 +168,7 @@ async def search_trials(
     status: str | None = None,
     page_size: int = 5,
     prefer_visualization: PreferViz = "auto",
-) -> dict[str, Any]:
+) -> str:
     """
     Search ClinicalTrials.gov for oncology trials and enrich results with linked PubMed publications.
 
@@ -159,11 +180,9 @@ async def search_trials(
       - page_size: number of results (default 5, max ~100)
 
     Medical abbreviations (NSCLC, HCC, TNBC) and trade names (Keytruda→pembrolizumab) are
-    automatically expanded. Returns full trial records with linked PMIDs and citations.
-
-    Returns {render_hint, ui, data, sources}. When LibreChat Artifacts are enabled, emit
-    the artifact described in ui.artifact using ui.raw (HTML card list). Cite sources
-    from the sources field. No forward-looking statements.
+    automatically expanded. Returns a pre-rendered ``:::artifact{…}:::`` text/html block
+    for LibreChat's Artifact side pane, plus a compact sources footer. Paste the artifact
+    block verbatim into your reply.
     """
     result = await orchestrator.search_trials_with_publications(
         disease_query=disease_query,
@@ -187,24 +206,22 @@ async def search_trials(
         prefer_visualization=prefer_visualization,
         query=disease_query,
     )
-    return attach_citation_layer(viz, result.citations)
+    return envelope_to_llm_text(attach_citation_layer(viz, result.citations))
 
 
 @mcp.tool()
 async def get_trial_details(
     nct_id: str,
     prefer_visualization: PreferViz = "auto",
-) -> dict[str, Any]:
+) -> str:
     """
     Fetch a single trial record by NCT ID from ClinicalTrials.gov.
 
     USE THIS WHEN: The user asks about a specific trial by its NCT ID (e.g. NCT04516746),
     or wants full details (endpoints, eligibility, locations, linked publications) for one trial.
-    Returns complete structured data including inclusion/exclusion criteria and linked PMIDs.
-
-    Returns {render_hint, ui, data, sources}. When LibreChat Artifacts are enabled, emit
-    the artifact described in ui.artifact using ui.blueprint (React shadcn Tabs view).
-    Cite sources from the sources field. No forward-looking statements.
+    Returns a pre-rendered ``:::artifact{…}:::`` text/html block for LibreChat's Artifact
+    side pane (sections for Overview, Design, Eligibility, Arms, Sites, Publications).
+    Paste the artifact block verbatim into your reply.
     """
     record = await orchestrator.get_trial_details(nct_id)
     if not record:
@@ -216,7 +233,9 @@ async def get_trial_details(
         promptclub_data=promptclub_data,
         prefer_visualization=prefer_visualization,
     )
-    return attach_citation_layer(viz, record.citations if record else None)
+    return envelope_to_llm_text(
+        attach_citation_layer(viz, record.citations if record else None)
+    )
 
 
 @mcp.tool()
@@ -224,18 +243,16 @@ async def search_publications(
     query: str,
     page_size: int = 10,
     prefer_visualization: PreferViz = "auto",
-) -> dict[str, Any]:
+) -> str:
     """
     Search PubMed for publications relevant to a disease, therapy, sponsor, or NCT ID.
 
     USE THIS WHEN: The user asks for papers, studies, or evidence from the scientific literature.
     Accepts free-text PubMed queries including MeSH terms, drug names, disease names, or NCT IDs
     (e.g. '"NCT04516746"' to find publications from a specific trial).
-    Returns title, abstract, authors, journal, pub date, and linked trial IDs (NCT numbers).
 
-    Returns {render_hint, ui, data, sources}. When LibreChat Artifacts are enabled, emit
-    the artifact described in ui.artifact using ui.raw (HTML card list with PMID badges).
-    Cite sources from the sources field. No forward-looking statements.
+    Returns a pre-rendered ``:::artifact{…}:::`` text/html card list for LibreChat's
+    Artifact side pane. Paste the artifact block verbatim into your reply.
     """
     pubs = await orchestrator.search_publications(query=query, page_size=page_size)
     empty = _maybe_no_data(pubs, source="PubMed", query_descriptor=query)
@@ -250,25 +267,25 @@ async def search_publications(
         prefer_visualization=prefer_visualization,
         query=query,
     )
-    return attach_citation_layer(viz, citations_from_rows(pubs))
+    return envelope_to_llm_text(
+        attach_citation_layer(viz, citations_from_rows(pubs))
+    )
 
 
 @mcp.tool()
 async def get_target_context(
     disease_id: str,
     prefer_visualization: PreferViz = "auto",
-) -> dict[str, Any]:
+) -> str:
     """
     Get target-disease associations from Open Targets using an EFO ontology disease ID.
 
     USE THIS WHEN: The user asks about biological targets, mechanisms of action, or which genes/
     proteins are associated with a disease. Requires an EFO ontology ID (e.g. EFO_0000756).
     If you only have a disease name, call resolve_disease first to get the ID.
-    Returns ranked targets with association scores from genetics, literature, and pathway data.
 
-    Returns {render_hint, ui, data, sources}. When LibreChat Artifacts are enabled, emit
-    the artifact described in ui.artifact using ui.raw (HTML scored table with bars).
-    Cite sources from the sources field. No forward-looking statements.
+    Returns a pre-rendered ``:::artifact{…}:::`` text/html scored table with CSS bars.
+    Paste the artifact block verbatim into your reply.
     """
     rows = await orchestrator.get_target_context(disease_id=disease_id)
     empty = _maybe_no_data(rows, source="Open Targets", query_descriptor=f"disease_id={disease_id}")
@@ -283,11 +300,13 @@ async def get_target_context(
         prefer_visualization=prefer_visualization,
         disease_id=disease_id,
     )
-    return attach_citation_layer(viz, citations_from_rows(rows))
+    return envelope_to_llm_text(
+        attach_citation_layer(viz, citations_from_rows(rows))
+    )
 
 
 @mcp.tool()
-async def get_known_drugs_for_target(ensembl_id: str, page_size: int = 25) -> dict[str, Any]:
+async def get_known_drugs_for_target(ensembl_id: str, page_size: int = 25) -> str:
     """
     Return drugs developed against a target with their indications and trial IDs —
     the deterministic Drug↔Target↔Trial join from Open Targets `drugAndClinicalCandidates`.
@@ -301,7 +320,8 @@ async def get_known_drugs_for_target(ensembl_id: str, page_size: int = 25) -> di
     openFDA matches an intervention from CT.gov. Use after `get_target_context`
     when the user wants to drill from disease → targets → drugs → trials.
 
-    Returns a plain dict envelope (no viz recipe yet — viz integration is a follow-up PR).
+    Returns a text-only (no visualization) tool result with the raw drug list and
+    citations — answer in prose.
     """
     rows = await orchestrator.get_known_drugs_for_target(
         ensembl_id=ensembl_id, page_size=page_size
@@ -312,24 +332,32 @@ async def get_known_drugs_for_target(ensembl_id: str, page_size: int = 25) -> di
     )
     if empty is not None:
         return empty
-    return attach_citation_layer(
-        {"count": len(rows), "results": [lean_dump(r) for r in rows]},
-        citations_from_rows(rows),
+    # No recipe yet for this tool — build a minimal envelope so the LLM
+    # receives the standard ``[NO VISUALIZATION]`` wrapper instead of a
+    # raw dict it would have to JSON-parse.
+    envelope = {
+        "render_hint": (
+            "Answer as plain text based on data. Cite sources using "
+            "NCT/PMID IDs from the 'sources' field. No forward-looking statements."
+        ),
+        "data": {"count": len(rows), "results": [lean_dump(r) for r in rows]},
+        "sources": [],
+    }
+    return envelope_to_llm_text(
+        attach_citation_layer(envelope, citations_from_rows(rows))
     )
 
 
 @mcp.tool()
-async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
+async def get_regulatory_context(drug_name: str) -> str:
     """
     Get public FDA labeling and regulatory context for a therapy using openFDA drug labels.
 
     USE THIS WHEN: The user asks about FDA approval status, indications, warnings, active
     ingredients, or routes of administration for a drug. Accepts brand names (Keytruda) or
-    generic/INN names (pembrolizumab). Returns structured label data with indications_and_usage,
-    active ingredients, application numbers, and manufacturer.
+    generic/INN names (pembrolizumab).
 
-    Returns plain text — no visualization recipe assigned. Cite sources by openFDA
-    application number. No forward-looking statements.
+    Returns plain text (no visualization). Cite sources by openFDA application number.
     """
     rows = await orchestrator.get_regulatory_context(drug_name=drug_name)
     empty = _maybe_no_data(rows, source="openFDA", query_descriptor=f"drug_name={drug_name}")
@@ -342,20 +370,21 @@ async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
             "results": [lean_dump(r) for r in rows],
         },
     )
-    return attach_citation_layer(viz, citations_from_rows(rows))
+    return envelope_to_llm_text(
+        attach_citation_layer(viz, citations_from_rows(rows))
+    )
 
 
 @mcp.tool()
-async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
+async def resolve_disease(query: str, page_size: int = 5) -> str:
     """
     Resolve a free-text disease name to Open Targets EFO ontology IDs.
 
     USE THIS WHEN: You need an EFO disease ID before calling get_target_context, or when the
-    user asks about disease ontology / synonyms. Input can be any disease name — returns
-    matched EFO IDs, canonical names, and descriptions. Always call this before
+    user asks about disease ontology / synonyms. Always call this before
     get_target_context if you only have a free-text disease name.
 
-    Returns plain text — no visualization recipe assigned.
+    Returns plain text (no visualization).
     """
     rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
     empty = _maybe_no_data(rows, source="Open Targets disease ontology", query_descriptor=query)
@@ -368,14 +397,16 @@ async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
             "results": [lean_dump(r) for r in rows],
         },
     )
-    return attach_citation_layer(viz, citations_from_rows(rows))
+    return envelope_to_llm_text(
+        attach_citation_layer(viz, citations_from_rows(rows))
+    )
 
 
 @mcp.tool()
 async def web_context_search(
     query: str,
     prefer_visualization: PreferViz = "auto",
-) -> dict[str, Any]:
+) -> str:
     """
     Search public web sources via Vertex AI Google Search grounding for real-time context.
 
@@ -384,8 +415,7 @@ async def web_context_search(
     Complements structured data sources but should NOT override them. Requires GCP credentials
     (returns empty gracefully if unavailable). Always cite the web sources returned.
 
-    Returns {render_hint, ui, data, sources}. When LibreChat Artifacts are enabled, emit
-    the artifact described in ui.artifact using ui.raw (HTML card list).
+    Returns a pre-rendered ``:::artifact{…}:::`` text/html card list for the Artifact pane.
     """
     rows = await orchestrator.web_context(query=query)
     viz = build_response_from_promptclub(
@@ -397,11 +427,13 @@ async def web_context_search(
         prefer_visualization=prefer_visualization,
         query=query,
     )
-    return attach_citation_layer(viz, citations_from_rows(rows))
+    return envelope_to_llm_text(
+        attach_citation_layer(viz, citations_from_rows(rows))
+    )
 
 
 @mcp.tool()
-async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
+async def test_data_sources(sample_query: str = "melanoma") -> str:
     """
     Run live health checks against all configured data sources (ClinicalTrials, PubMed, Open Targets, openFDA, Web).
 
@@ -409,14 +441,22 @@ async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
     or reports that a data source seems down. Returns latency, status, and sample IDs for each source.
     """
     results = await orchestrator.test_sources(sample_query=sample_query)
-    return {"results": [lean_dump(r) for r in results]}
+    envelope = {
+        "render_hint": (
+            "Answer as plain text based on data. Cite sources using "
+            "NCT/PMID IDs from the 'sources' field. No forward-looking statements."
+        ),
+        "data": {"results": [lean_dump(r) for r in results]},
+        "sources": [],
+    }
+    return envelope_to_llm_text(envelope)
 
 
 @mcp.tool()
 async def build_trial_comparison(
     nct_ids: list[str],
     prefer_visualization: PreferViz = "auto",
-) -> dict[str, Any]:
+) -> str:
     """
     Fetch multiple trials in parallel and return them side-by-side for structured comparison.
 
@@ -424,20 +464,18 @@ async def build_trial_comparison(
     (e.g. "compare NCT04516746 and NCT03956680"), or asks for a head-to-head comparison
     of trial designs, endpoints, eligibility, enrollment, or sponsor information.
     Pass a list of NCT IDs — all trials are fetched in parallel for speed.
-    Returns full structured records for each trial plus an errors list for any not found.
 
-    Returns {render_hint, ui, data, sources}. When LibreChat Artifacts are enabled, emit
-    the artifact described in ui.artifact using ui.raw (Mermaid gantt timeline by default,
-    or HTML cards if prefer_visualization='cards' or >15 trials).
-    Cite sources from the sources field. No forward-looking statements.
+    Returns a pre-rendered ``:::artifact{…}:::`` block — Mermaid gantt by default, HTML
+    card grid if prefer_visualization='cards' or >15 trials or trials lack ISO dates.
     """
     result = await orchestrator.build_trial_comparison(nct_ids=nct_ids)
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="build_trial_comparison",
         promptclub_data=result,
         prefer_visualization=prefer_visualization,
         query="trial-comparison-" + "-".join(nct_ids[:3]),
     )
+    return envelope_to_llm_text(viz)
 
 
 @mcp.tool()
@@ -445,54 +483,47 @@ async def analyze_indication_landscape(
     condition: str,
     phase: str | None = None,
     prefer_visualization: PreferViz = "auto",
-) -> dict[str, Any]:
+) -> str:
     """
     Return a high-level landscape overview for a disease indication across all data sources.
 
     USE THIS WHEN: The user asks "how big is the [disease] space?", "how many trials are there
     for [condition]?", "what is the research activity level?", or needs a landscape summary
-    before diving into specifics. Queries ClinicalTrials.gov, PubMed, openFDA, and Open Targets
-    in parallel. Optional phase filter narrows trial count to a specific development stage.
-    Returns counts for trials, publications (last 3 years), FDA label records, and disease
-    ontology matches. Medical abbreviations (NSCLC, HCC) are automatically expanded.
+    before diving into specifics.
 
-    Returns {render_hint, ui, data, sources}. The flat-counts shape is rendered as text by
-    default; pair with analyze_whitespace or get_sponsor_overview for visual breakdowns.
+    Returns plain text (flat counts). Pair with analyze_whitespace or get_sponsor_overview
+    for visual breakdowns.
     """
     result = await orchestrator.analyze_indication_landscape(condition=condition, phase=phase)
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="analyze_indication_landscape",
         promptclub_data=result,
         prefer_visualization=prefer_visualization,
     )
+    return envelope_to_llm_text(viz)
 
 
 @mcp.tool()
 async def analyze_whitespace(
     condition: str,
     prefer_visualization: PreferViz = "auto",
-) -> dict[str, Any]:
+) -> str:
     """
     Identify underserved segments and whitespace opportunities in a disease indication.
 
     USE THIS WHEN: The user asks "where are the gaps?", "what is underserved?", "are there
-    whitespace opportunities in [disease]?", "which phases lack trials?", or any competitive
-    intelligence question about unmet needs and market gaps.
-    Queries trial counts by phase (1/2/3) and status (recruiting/completed), plus publication
-    volume and FDA approvals — all in parallel. Returns a structured breakdown and a plain-language
-    list of identified whitespace signals (e.g. "Few Phase 3 trials — late-stage evidence lacking").
-    Medical abbreviations are automatically expanded.
+    whitespace opportunities in [disease]?", "which phases lack trials?".
 
-    Returns {render_hint, ui, data, sources}. When LibreChat Artifacts are enabled, emit
-    the artifact described in ui.artifact using ui.raw (HTML stat cards + whitespace signal list).
-    Cite sources from the sources field. No forward-looking statements.
+    Returns a pre-rendered ``:::artifact{…}:::`` text/html block with stat tiles and
+    whitespace signal cards. Paste the artifact block verbatim into your reply.
     """
     result = await orchestrator.analyze_whitespace(condition=condition)
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="analyze_whitespace",
         promptclub_data=result,
         prefer_visualization=prefer_visualization,
     )
+    return envelope_to_llm_text(viz)
 
 
 @mcp.tool()
@@ -500,25 +531,22 @@ async def get_sponsor_overview(
     condition: str,
     page_size: int = 25,
     prefer_visualization: PreferViz = "auto",
-) -> dict[str, Any]:
+) -> str:
     """
     Return a ranked overview of sponsors/companies active in a disease indication.
 
     USE THIS WHEN: The user asks "who are the key players in [disease]?", "which companies
-    are running trials for [condition]?", "competitive landscape by sponsor", or wants to
-    understand which pharma/biotech organizations are most active in a space.
-    Fetches up to page_size trials and groups them by lead sponsor, sorted by trial count.
-    Returns unique sponsor count, total trials sampled, and a ranked sponsor list with counts.
+    are running trials for [condition]?", "competitive landscape by sponsor".
 
-    Returns {render_hint, ui, data, sources}. The aggregate counts shape is rendered as
-    plain text by default. Pair with search_trials for visual results. No forward-looking statements.
+    Returns plain text (aggregate counts). Pair with search_trials for visual results.
     """
     result = await orchestrator.get_sponsor_overview(condition=condition, page_size=page_size)
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="get_sponsor_overview",
         promptclub_data=result,
         prefer_visualization=prefer_visualization,
     )
+    return envelope_to_llm_text(viz)
 
 
 # Create MCP ASGI app — triggers lazy session_manager initialization.
