@@ -12,6 +12,20 @@
 
 ---
 
+## Merge Notes (post-merge from main, 2026-04-09)
+
+After this plan was authored, three commits landed on `main` and were merged into the feature branch. Two of them affect WS1 directly:
+
+1. **`5001d95 fix(mcp): force auto-visualization via in-band ACTION REQUIRED preamble`** — `app/viz/mcp_output.py:_format_with_artifact` now prepends a multi-line `ACTION REQUIRED — copy the :::artifact{…}::: block...` preamble before the artifact directive. The tool text no longer starts with `:::artifact`, it starts with `ACTION REQUIRED`. **This preamble must be preserved by Task 15** — the full file rewrite in that task has been adapted.
+2. **`dfd7dd5 rename: mcp-yallah → Pharmafuse MCP`** — module docstrings were rebranded. Task 15's file rewrite uses the new name.
+3. **`5001d95` also added** a `## ZERO-EXCEPTION RULE` subsection to the `instructions=` block in `app/main.py`. The block describing the artifact paste mandate is **already in place** and is stronger than what was originally planned. **Task 17 has been adapted** — instead of "add a sentence", it now deletes the obsolete `(2) [NO VISUALIZATION]` and `(3) [NO DATA AVAILABLE]` shape descriptions and trims section (1) to acknowledge the ACTION REQUIRED preamble.
+
+Task 14's guarantee test uses `":::artifact" in text` (not `startswith`), so the new preamble does not break it.
+
+`_maybe_no_data` still exists at `app/main.py:170+` after the merge — Task 11 still applies as written.
+
+---
+
 ## File Structure
 
 **New files:**
@@ -2071,22 +2085,26 @@ Run: `python -m pytest tests/viz/test_mcp_output.py::test_mcp_output_never_emits
 
 Expected: PASS (the new behavior in build_response is sufficient).
 
-- [ ] **Step 4: Delete the dead branches**
+- [ ] **Step 4: Delete the dead branches (preserve the ACTION REQUIRED preamble)**
 
-Edit `app/viz/mcp_output.py`. Replace the entire file with:
+Edit `app/viz/mcp_output.py`. Replace the entire file with the version below.
+
+**Important:** the `_format_with_artifact` function in this version preserves the multi-line `ACTION REQUIRED` preamble that was added by commit `5001d95` on main. Do NOT remove or shorten the preamble — it is the in-band guarantee that the LLM pastes the artifact block. Only the SKIP and no_data branches are deleted.
 
 ```python
 """Convert an envelope dict into LLM-ready text for MCP tool returns.
 
-The server pre-assembles the ``:::artifact{…}:::`` directive with
-``ui.raw`` as its body and returns it as plain text. The LLM reads the
-tool result as "the thing to paste" and just includes it in its reply,
-optionally adding a few sentences of commentary afterwards.
+This module pre-assembles the ``:::artifact{…}:::`` directive with
+``ui.raw`` as its body and returns it as plain text wrapped in an
+"ACTION REQUIRED" preamble. The LLM reads the tool result as "the
+thing to paste" and just includes it in its reply, optionally adding
+a few sentences of commentary afterwards. No JSON parsing needed.
 
-Coverage guarantee: every envelope produced by ``app.viz.build.build_response``
-contains a populated ``ui`` field. There is no longer a SKIP path or a
-``[NO DATA AVAILABLE]`` shortcircuit — the legacy ``_format_text_only``
-and ``_format_no_data`` branches have been removed.
+Coverage guarantee: every envelope produced by
+``app.viz.build.build_response`` contains a populated ``ui`` field.
+There is no longer a SKIP path or a ``[NO DATA AVAILABLE]``
+shortcircuit — the legacy ``_format_text_only`` and ``_format_no_data``
+branches have been removed.
 """
 
 from __future__ import annotations
@@ -2096,6 +2114,8 @@ from typing import Any
 __all__ = ["envelope_to_llm_text"]
 
 
+# Cap the sources footer length — the full citation list can be many
+# dozens of entries, but the LLM only needs a handful for its commentary.
 _MAX_SOURCES_IN_FOOTER = 10
 
 
@@ -2103,7 +2123,7 @@ def envelope_to_llm_text(envelope: dict[str, Any]) -> str:
     """Render an envelope dict as the text payload an MCP tool should return.
 
     The envelope MUST contain a populated ``ui`` field. ``build_response``
-    guarantees this; any caller bypassing build_response is a bug.
+    guarantees this; any caller bypassing ``build_response`` is a bug.
     """
     ui = envelope.get("ui")
     if ui is None:
@@ -2115,9 +2135,22 @@ def envelope_to_llm_text(envelope: dict[str, Any]) -> str:
     return _format_with_artifact(ui, sources)
 
 
+# --- Visualization path ----------------------------------------------------
+
+
 def _format_with_artifact(
     ui: dict[str, Any], sources: list[dict[str, Any]]
 ) -> str:
+    """Pre-assemble the :::artifact{…}::: block the LLM should paste.
+
+    The tool result deliberately STARTS with a one-line imperative
+    telling the LLM to paste the block below verbatim. We tried system-
+    prompt-level instructions ("MANDATORY: always include the artifact")
+    and still saw the LLM skip the block unless the user explicitly
+    asked for a visualization. Putting the instruction in-band — right
+    next to the thing it should copy — gets the LLM to reliably forward
+    the artifact to LibreChat's side pane.
+    """
     artifact = ui["artifact"]
     identifier = artifact["identifier"]
     art_type = artifact["type"]
@@ -2131,10 +2164,36 @@ def _format_with_artifact(
     )
 
     footer = _sources_footer(sources)
-    return f"{artifact_block}\n\n{footer}"
+
+    # In-band instruction. The LLM sees this BEFORE the artifact block and
+    # treats it as guidance-for-this-tool-result, not as content to echo.
+    # Phrasing:
+    #   - "ACTION REQUIRED" is a strong trigger phrase for tool-following
+    #   - The explicit "paste the :::artifact block below verbatim at the
+    #     start of your reply" tells it exactly what to do
+    #   - "do NOT write your own visualization / do NOT skip the block"
+    #     closes the two failure modes we saw in production
+    preamble = (
+        "ACTION REQUIRED — copy the :::artifact{…}::: block below into your "
+        "reply VERBATIM, as the very first thing you write. Do not rewrite "
+        "the HTML, do not paraphrase it, do not build your own alternative "
+        "visualization, and do not skip the block because you think prose "
+        "is enough. LibreChat only opens the side pane when the artifact "
+        "directive appears in your reply, so omitting it means the user "
+        "sees nothing. AFTER the artifact block you MAY add 2–5 sentences "
+        "of analysis that interpret the visualization. This applies to "
+        "every single tool call — the user does NOT need to ask for a "
+        "visualization, it is the default whenever a tool returns one."
+    )
+
+    return f"{preamble}\n\n{artifact_block}\n\n{footer}"
+
+
+# --- Helpers ---------------------------------------------------------------
 
 
 def _sources_footer(sources: list[dict[str, Any]]) -> str:
+    """Compact one-block citation list for the LLM's commentary section."""
     if not sources:
         return "Sources: (none returned by this tool)"
     lines = ["Sources:"]
@@ -2150,6 +2209,7 @@ def _sources_footer(sources: list[dict[str, Any]]) -> str:
 
 
 def _escape_attr(value: object) -> str:
+    """Escape double quotes for safe inclusion inside an artifact attribute."""
     if value is None:
         return ""
     return str(value).replace("\\", "\\\\").replace('"', '\\"')
@@ -2261,42 +2321,107 @@ markers are never allowed."
 
 ---
 
-## Task 17: Update the LLM `instructions=` block
+## Task 17: Trim obsolete shape descriptions from the LLM `instructions=` block
+
+**Note (post-merge):** the `## ZERO-EXCEPTION RULE` block at lines 64–88 of `app/main.py` (added by commit `5001d95`) is already in place and is stronger than what was originally planned for this task. The work here is now to **delete the obsolete sections** that describe response shapes that no longer exist after Tasks 10, 11, and 15.
 
 **Files:**
-- Modify: `app/main.py`
+- Modify: `app/main.py` (the `instructions=` string in the FastMCP constructor)
 
-- [ ] **Step 1: Locate the `instructions=` block**
+- [ ] **Step 1: Locate the THREE SHAPES block**
 
-Run: `grep -n "instructions=" app/main.py | head -5`
+Run: `grep -n "THREE SHAPES\|Visualization result\|NO VISUALIZATION\|NO DATA AVAILABLE" app/main.py`
 
-Expected: the FastMCP constructor with the multi-line `instructions=` string starting around line 24.
+Expected: the `## PARSING THE TOOL RESPONSE` section around line 90, with the three shape descriptions at lines ~98 (1), ~125 (2), ~140 (3).
 
-- [ ] **Step 2: Add the coverage guarantee statement**
+- [ ] **Step 2: Read the current block**
 
-Edit `app/main.py`. Find the VISUALIZATION section in the `instructions=` block (around the section that distinguishes `[visualization]`, `[text-only]`, `[no-data]` shapes) and add the following sentence at the end of that section:
+Run: `sed -n '90,160p' app/main.py`
+
+Confirm the three shape descriptions are present. After this task, only shape (1) remains, and it should be slightly retitled because there is now only one shape.
+
+- [ ] **Step 3: Replace the THREE SHAPES block with a single SHAPE block**
+
+Edit `app/main.py`. Find this block (the exact text comes from the file you just inspected — match it carefully):
 
 ```
-COVERAGE GUARANTEE: Every tool response now contains an :::artifact::: block. You MUST paste it. There is no [NO VISUALIZATION] case and no [NO DATA AVAILABLE] case anymore — even empty results are wrapped in a fallback info_card. Always paste the artifact, then add a brief commentary if useful.
+THE TOOL RESPONSE HAS ONE OF THREE SHAPES:
+
+(1) Visualization result — starts with a ``:::artifact{…}:::`` directive:
+... [section 1 content] ...
+
+(2) Text-only result — starts with ``[NO VISUALIZATION]``:
+... [section 2 content] ...
+
+(3) Empty result — starts with ``[NO DATA AVAILABLE]``:
+... [section 3 content] ...
 ```
 
-Also remove any references to `[NO VISUALIZATION]` and `[NO DATA AVAILABLE]` from the rest of the instructions block — those code paths no longer exist.
+Replace the entire block (sections 1, 2, AND 3) with this single section:
 
-- [ ] **Step 3: Run the smoke test**
+```
+THE TOOL RESPONSE ALWAYS HAS THE SAME SHAPE:
+
+Every tool result starts with an ``ACTION REQUIRED`` preamble line followed
+by exactly one ``:::artifact{…}:::`` directive. There are no other shapes
+anymore — empty results, definition queries, single-entity lookups, and
+unknown tools all produce a fallback info-card / concept-card / single-
+entity-card artifact. The legacy ``[NO VISUALIZATION]`` and
+``[NO DATA AVAILABLE]`` markers no longer exist in the wire format.
+
+    ACTION REQUIRED — copy the :::artifact{…}::: block below into your
+    reply VERBATIM, as the very first thing you write. ...
+
+    :::artifact{identifier="..." type="html" title="..."}
+    <div class="...">
+      …HTML body…
+    </div>
+    :::
+
+    (Type values are the short LibreChat names: ``html`` or ``mermaid`` —
+    NOT MIME types. Leave the type string exactly as the tool emitted it.)
+
+    Sources:
+      - [clinicaltrials.gov] NCT01234567 https://clinicaltrials.gov/study/NCT01234567
+      - [pubmed] 12345678 https://pubmed.ncbi.nlm.nih.gov/12345678/
+
+MANDATORY: Copy the ENTIRE ``:::artifact{…}:::`` block (from the opening
+``:::artifact`` line through the closing ``:::``) into your reply
+VERBATIM. Do not rewrite, reformat, paraphrase, truncate, or reorder
+the HTML / Mermaid inside the fence. Do not wrap a Mermaid diagram in
+a ```mermaid fence — the artifact directive already declares the type.
+Do not echo the ACTION REQUIRED preamble — it is a tool-internal
+instruction.
+
+After you have pasted the artifact block, you MAY add 2–5 sentences
+of analytical commentary interpreting the visualization or connecting
+it to the user's question. Cite sources from the footer using
+NCT / PMID identifiers. The commentary is optional; the verbatim
+artifact paste is not.
+```
+
+- [ ] **Step 4: Verify no stale references remain**
+
+Run: `grep -n "NO VISUALIZATION\|NO DATA AVAILABLE\|THREE SHAPES" app/main.py`
+
+Expected: zero hits inside the `instructions=` string. (Hits inside `_maybe_no_data` are fine if any survived — Task 11 deletes that function.)
+
+- [ ] **Step 5: Run the full test suite**
 
 Run: `python -m pytest tests/ -q`
 
-Expected: all tests pass.
+Expected: all tests pass. The instructions block is a Python string literal — no code changes, just docs inside the string.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/main.py
-git commit -m "docs(mcp): update instructions block for coverage guarantee
+git commit -m "docs(mcp): trim obsolete [NO VIZ] / [NO DATA] shape descriptions
 
-Replaces the [NO VISUALIZATION] / [NO DATA AVAILABLE] branches in the
-LLM instructions with a single coverage guarantee statement: every
-response contains an artifact block, the LLM must paste it."
+After WS1 coverage guarantee work, every tool response has the same
+shape: ACTION REQUIRED preamble + exactly one :::artifact::: block.
+The legacy [NO VISUALIZATION] and [NO DATA AVAILABLE] markers are
+gone. The ZERO-EXCEPTION RULE block (already present) is unchanged."
 ```
 
 ---
