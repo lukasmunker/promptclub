@@ -1,13 +1,9 @@
-"""Inline Markdown recipe: trials grouped by sponsor, each as its own table.
+"""HTML recipe: trials grouped by sponsor (or phase) in a responsive card grid.
 
 Used as the alternative to ``trial_timeline_gantt`` when either:
-- the user explicitly requests a cards/table view via ``prefer_visualization="cards"``
+- the user explicitly requests a cards view via ``prefer_visualization="cards"``
 - the comparison exceeds ``MAX_TRIALS_IN_GANTT`` and a gantt would be illegible
 - start/primary_completion dates are missing so a gantt can't be drawn
-
-Produces a ``text/markdown`` envelope with one ``### Sponsor`` section per
-sponsor, each containing a GFM table of that sponsor's trials. Renders
-directly in the chat bubble.
 """
 
 from __future__ import annotations
@@ -16,13 +12,10 @@ from collections import defaultdict
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
-from app.viz.utils.citations import format_source_footer
-from app.viz.utils.emoji import format_phase, format_status
+from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
-__all__ = ["build", "BAR_WIDTH"]
-
-BAR_WIDTH = 10  # 0.0 → 1.0 scaled to 10 Unicode block characters
+__all__ = ["build"]
 
 
 def build(
@@ -36,28 +29,23 @@ def build(
 
     groups = _group_trials(trials, group_key)
 
-    # Pre-section overview: ranked sponsor-count table with ASCII bars.
-    # This gives a quick visual sense of *which* sponsor dominates before
-    # the user scrolls through the per-sponsor details below.
-    overview_md = _render_sponsor_ranking(groups)
-
-    sections_md = "\n\n".join(
+    section_html = "\n".join(
         _render_section(name, items) for name, items in groups.items()
     )
 
-    source_footer = format_source_footer(sources)
     raw = (
-        f"## {_md_escape(title)}\n\n"
-        f"{overview_md}"
-        f"{sections_md}\n"
-        f"{source_footer}"
+        f'<div class="space-y-6 p-4 font-sans text-gray-900">\n'
+        f"{section_html}\n"
+        f"</div>"
     )
+
+    assert_safe_html(raw)
 
     return UiPayload(
         recipe="sponsor_pipeline_cards",
         artifact=ArtifactMeta(
             identifier=make_identifier("sponsor_pipeline_cards", query),
-            type="text/markdown",
+            type="text/html",
             title=title,
         ),
         components=None,
@@ -78,116 +66,73 @@ def _group_trials(
         name = t.get(group_key) or "(unknown)"
         groups[str(name)].append(t)
     # Sort sections by trial count, descending, then by name
-    return dict(sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])))
+    return dict(
+        sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    )
 
 
-# --- Section rendering ------------------------------------------------------
+# --- Section + card templates ----------------------------------------------
 
 
 def _render_section(name: str, items: list[dict[str, Any]]) -> str:
-    """A ### header + a GFM table of the sponsor's trials."""
-    header = f"### {_md_escape(name)} ({len(items)} trial{'s' if len(items) != 1 else ''})\n"
-    table_header = (
-        "| NCT | Trial | Phase | Status | Start → Primary completion |\n"
-        "| --- | --- | --- | --- | --- |\n"
+    header = (
+        f'<div class="flex items-baseline justify-between border-b border-gray-200 pb-2">\n'
+        f'  <h2 class="text-base font-semibold text-gray-900">{escape_html(name)}</h2>\n'
+        f'  <span class="text-xs text-gray-500">{len(items)} trials</span>\n'
+        f'</div>'
     )
-    rows = "\n".join(_row(t) for t in items)
-    return header + "\n" + table_header + rows + "\n"
+    cards = "\n".join(_render_card(t) for t in items)
+    return (
+        f'<section>\n{header}\n'
+        f'<div class="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">\n'
+        f"{cards}\n"
+        f"</div>\n</section>"
+    )
 
 
-def _row(trial: dict[str, Any]) -> str:
-    nct = trial.get("nct_id") or ""
-    nct_cell = (
-        f"[`{_md_escape_cell(nct)}`](https://clinicaltrials.gov/study/{_md_escape_url(nct)})"
-        if nct
-        else "—"
+def _render_card(trial: dict[str, Any]) -> str:
+    nct = trial.get("nct_id") or "(no id)"
+    nct_badge = (
+        f'<a href="https://clinicaltrials.gov/study/{escape_html(nct)}" '
+        f'target="_blank" rel="noopener" '
+        f'class="font-mono text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 '
+        f'border border-blue-200 hover:bg-blue-100">{escape_html(nct)}</a>'
+        if trial.get("nct_id")
+        else '<span class="font-mono text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">(no id)</span>'
+    )
+
+    phase = trial.get("phase")
+    phase_pill = (
+        f'<span class="inline-flex items-center text-xs px-2 py-0.5 rounded '
+        f'bg-amber-50 text-amber-700 border border-amber-200">'
+        f"{escape_html(phase)}</span>"
+        if phase
+        else ""
     )
 
     title = trial.get("acronym") or trial.get("title") or "(untitled)"
-    title_cell = _md_escape_cell(_truncate(title, 60)) or "—"
-
-    phase_raw = trial.get("phase")
-    phase_cell = _md_escape_cell(format_phase(phase_raw)) if phase_raw else "—"
-    status_raw = trial.get("status")
-    status_cell = _md_escape_cell(format_status(status_raw)) if status_raw else "—"
-
+    status = trial.get("status")
     start = trial.get("start_date")
     end = trial.get("primary_completion_date")
+
+    dates_line = ""
     if start and end:
-        dates_cell = f"{_md_escape_cell(start)} → {_md_escape_cell(end)}"
+        dates_line = f"{escape_html(start)} → {escape_html(end)}"
     elif start:
-        dates_cell = f"start {_md_escape_cell(start)}"
-    else:
-        dates_cell = "—"
+        dates_line = f"start {escape_html(start)}"
 
-    return f"| {nct_cell} | {title_cell} | {phase_cell} | {status_cell} | {dates_cell} |"
+    meta_parts = []
+    if status:
+        meta_parts.append(escape_html(status))
+    if dates_line:
+        meta_parts.append(dates_line)
+    meta_line = " · ".join(meta_parts)
 
-
-# --- Sponsor ranking overview (ASCII bars) ---------------------------------
-
-
-def _render_sponsor_ranking(
-    groups: dict[str, list[dict[str, Any]]],
-) -> str:
-    """GFM table of sponsors ranked by trial count, with a visual bar column.
-
-    Returns an empty string when there's only one sponsor (the per-section
-    layout below already makes the point — no need for a 1-row ranking
-    table).
-    """
-    if len(groups) < 2:
-        return ""
-
-    max_count = max((len(items) for items in groups.values()), default=0)
-    if max_count == 0:
-        return ""
-
-    header = (
-        "### Sponsor Ranking\n\n"
-        "| Rank | Sponsor | Trials | Share |\n"
-        "| ---:| --- | ---:| --- |\n"
-    )
-    rows: list[str] = []
-    for idx, (name, items) in enumerate(groups.items(), start=1):
-        count = len(items)
-        # Scale each sponsor's count against the leader (not against the
-        # total) so the leader has a full bar and the bottom sponsor still
-        # shows a visible sliver.
-        ratio = count / max_count if max_count else 0
-        filled = round(ratio * BAR_WIDTH)
-        bar = "█" * filled + "░" * (BAR_WIDTH - filled)
-        rows.append(
-            f"| {idx} | {_md_escape_cell(name)} | {count} | `{bar}` |"
-        )
-    return header + "\n".join(rows) + "\n\n"
-
-
-# --- Escaping helpers ------------------------------------------------------
-
-
-def _md_escape(text: object) -> str:
-    if text is None:
-        return ""
-    s = str(text)
-    return s.replace("\\", "\\\\").replace("_", "\\_").replace("*", "\\*")
-
-
-def _md_escape_cell(text: object) -> str:
-    if text is None:
-        return ""
-    s = str(text).replace("\n", " ").replace("\r", " ").strip()
-    return s.replace("|", "\\|")
-
-
-def _md_escape_url(url: object) -> str:
-    if url is None:
-        return ""
-    return str(url).replace(")", "%29").replace("(", "%28").replace(" ", "%20")
-
-
-def _truncate(text: str | None, max_len: int) -> str:
-    if not text:
-        return ""
-    if len(text) <= max_len:
-        return text
-    return text[: max_len - 1].rstrip() + "…"
+    return f"""<article class="rounded-lg border border-gray-200 bg-white p-3">
+  <div class="flex items-start justify-between gap-2">
+    {nct_badge}
+    {phase_pill}
+  </div>
+  <h3 class="mt-2 font-medium text-gray-900 leading-snug">{escape_html(title)}</h3>
+  <p class="mt-1 text-xs text-gray-500">{meta_line}</p>
+</article>"""

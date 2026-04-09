@@ -1,19 +1,25 @@
-"""Inline Markdown recipe: indication landscape dashboard.
+"""HTML recipe: indication landscape dashboard.
 
-Formerly rendered as a React + recharts artifact (BarChart + PieChart +
-LineChart + shadcn Card grid), but LibreChat's Sandpack 2.19.8 crashes on
-recharts-based artifacts with "Attempted to assign to readonly property".
-We migrated to inline markdown with Mermaid pies + Markdown tables instead.
+Renders as a ``text/html`` artifact with four panels:
 
-Sections (rendered only when the corresponding data is present):
-  1. Phase Distribution — mermaid pie chart
-  2. Status Breakdown — mermaid pie chart
-  3. Top Sponsors — markdown table with ASCII bars
-  4. Enrollment Pace — markdown table (no chart, since mermaid xychart-beta
-     is unreliable in LibreChat 2.19.8 sandpack)
+  1. Stat tiles — total trials, unique phases, unique sponsors, enrollment
+  2. Phase distribution — SVG donut (via app.viz.utils.html.svg_donut)
+  3. Status breakdown — SVG donut
+  4. Top sponsors — HTML table with CSS bar + numeric trial count
 
-The recipe name is kept as ``indication_dashboard`` for backward
-compatibility with decision.py, the envelope contract, and existing callers.
+Formerly a React + recharts blueprint. Rewritten to plain HTML + Tailwind +
+inline SVG so it renders without Sandpack. Panels without usable data are
+omitted gracefully.
+
+Input shape comes from ``get_indication_landscape`` / ``analyze_indication_landscape``:
+
+    {
+        "indication": "NSCLC",
+        "phase_distribution": [{"phase": "Phase 1", "count": 42}, ...],
+        "status_breakdown": [{"status": "Recruiting", "count": 95}, ...],
+        "top_sponsors": [{"name": "Merck", "trials": 34}, ...],
+        "enrollment_over_time": [{"month": "2025-01", "enrolled": 120}, ...]  # optional
+    }
 """
 
 from __future__ import annotations
@@ -21,13 +27,12 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
-from app.viz.utils.citations import format_source_footer
+from app.viz.utils.html import assert_safe_html, escape_html, svg_donut
 from app.viz.utils.identifiers import make_identifier
 
 __all__ = ["build", "MAX_SPONSORS_IN_BAR"]
 
 MAX_SPONSORS_IN_BAR = 20
-BAR_WIDTH = 10  # ASCII bar width in block characters
 
 
 def build(
@@ -40,41 +45,46 @@ def build(
     phase_dist = data.get("phase_distribution") or []
     status_breakdown = data.get("status_breakdown") or []
     top_sponsors = _cap_sponsors(data.get("top_sponsors") or [])
-    enrollment_series = data.get("enrollment_over_time") or []
 
-    sections: list[str] = []
+    panels: list[str] = []
 
-    phase_md = _render_phase_pie(phase_dist, indication)
-    if phase_md:
-        sections.append(phase_md)
+    tiles_html = _render_stat_tiles(phase_dist, status_breakdown, top_sponsors)
+    if tiles_html:
+        panels.append(tiles_html)
 
-    status_md = _render_status_pie(status_breakdown, indication)
-    if status_md:
-        sections.append(status_md)
+    phase_donut_html = _render_phase_donut(phase_dist)
+    status_donut_html = _render_status_donut(status_breakdown)
+    if phase_donut_html or status_donut_html:
+        panels.append(_render_donut_row(phase_donut_html, status_donut_html))
 
-    sponsors_md = _render_sponsors_table(top_sponsors)
-    if sponsors_md:
-        sections.append(sponsors_md)
+    sponsors_html = _render_sponsors_table(top_sponsors)
+    if sponsors_html:
+        panels.append(sponsors_html)
 
-    enrollment_md = _render_enrollment_table(enrollment_series)
-    if enrollment_md:
-        sections.append(enrollment_md)
-
-    if not sections:
-        sections.append(
-            f"_No landscape data available for {indication}._"
+    body_html = (
+        "\n".join(panels)
+        if panels
+        else (
+            '<section><p class="text-sm text-gray-500 italic">'
+            f"No landscape data available for {escape_html(indication)}.</p></section>"
         )
+    )
 
-    body_md = "\n\n".join(sections)
-    source_footer = format_source_footer(sources)
+    raw = f"""<div class="p-4 font-sans text-gray-900 space-y-4">
+  <header class="border-b border-gray-200 pb-2">
+    <h2 class="text-base font-semibold">{escape_html(title)}</h2>
+    <p class="text-xs text-gray-500">Source: ClinicalTrials.gov</p>
+  </header>
+  {body_html}
+</div>"""
 
-    raw = f"## {_md_escape(title)}\n\n{body_md}\n{source_footer}"
+    assert_safe_html(raw)
 
     return UiPayload(
         recipe="indication_dashboard",
         artifact=ArtifactMeta(
             identifier=make_identifier("indication_dashboard", indication),
-            type="text/markdown",
+            type="text/html",
             title=title,
         ),
         components=None,
@@ -84,57 +94,111 @@ def build(
     )
 
 
-# --- Phase distribution pie ------------------------------------------------
+# --- Stat tiles ------------------------------------------------------------
 
 
-def _render_phase_pie(
-    phase_dist: list[dict[str, Any]], indication: str
+def _render_stat_tiles(
+    phase_dist: list[dict[str, Any]],
+    status_breakdown: list[dict[str, Any]],
+    top_sponsors: list[dict[str, Any]],
 ) -> str:
-    """Mermaid pie chart. Skipped when fewer than 2 phases have non-zero data."""
-    non_zero = [
-        (str(row.get("phase", "?")), int(row.get("count", 0)))
+    total_trials = sum(
+        int(row.get("count", 0))
+        for row in phase_dist
+        if isinstance(row, dict) and isinstance(row.get("count"), (int, float))
+    )
+    distinct_phases = sum(
+        1
         for row in phase_dist
         if isinstance(row, dict)
         and isinstance(row.get("count"), (int, float))
         and row.get("count") > 0
-    ]
-    if len(non_zero) < 2:
+    )
+    recruiting = 0
+    for row in status_breakdown:
+        if not isinstance(row, dict):
+            continue
+        status = str(row.get("status") or "").lower()
+        count = row.get("count", 0)
+        if "recruit" in status and isinstance(count, (int, float)):
+            recruiting += int(count)
+    sponsor_count = len(top_sponsors)
+
+    # Don't render the panel if all stats are zero — decision layer should
+    # have caught it, but defense in depth.
+    if not (total_trials or distinct_phases or recruiting or sponsor_count):
         return ""
 
-    title = _safe_mermaid_label(f"Phase Distribution — {indication}", 80)
-    lines = ["### Phase Distribution", "", "```mermaid", f"pie title {title}"]
-    for label, count in non_zero:
-        safe = _safe_mermaid_label(label, 40)
-        lines.append(f'    "{safe}" : {count}')
-    lines.append("```")
-    return "\n".join(lines)
+    tiles = [
+        ("Total Trials", total_trials, "blue"),
+        ("Phases", distinct_phases, "blue"),
+        ("Recruiting", recruiting, "emerald"),
+        ("Sponsors", sponsor_count, "purple"),
+    ]
+    rendered = "\n    ".join(_tile(label, value, color) for label, value, color in tiles)
+    return f"""<section>
+    <h3 class="sr-only">Landscape Overview</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+    {rendered}
+    </div>
+  </section>"""
 
 
-# --- Status breakdown pie --------------------------------------------------
+def _tile(label: str, value: int, color: str) -> str:
+    color_classes = {
+        "blue": "bg-blue-50 text-blue-700 border-blue-200",
+        "emerald": "bg-emerald-50 text-emerald-700 border-emerald-200",
+        "amber": "bg-amber-50 text-amber-700 border-amber-200",
+        "purple": "bg-purple-50 text-purple-700 border-purple-200",
+    }.get(color, "bg-gray-50 text-gray-700 border-gray-200")
+    display = f"{value:,}".replace(",", ".") if isinstance(value, int) else "—"
+    return f"""<div class="rounded-lg border {color_classes} p-3 text-center">
+      <div class="text-2xl font-semibold tabular-nums">{escape_html(display)}</div>
+      <div class="text-xs uppercase tracking-wide opacity-80 mt-1">{escape_html(label)}</div>
+    </div>"""
 
 
-def _render_status_pie(
-    status_breakdown: list[dict[str, Any]], indication: str
-) -> str:
-    """Mermaid pie chart for status distribution. Skipped when fewer than 2
-    distinct statuses have non-zero counts."""
-    non_zero = [
-        (str(row.get("status", "?")), int(row.get("count", 0)))
+# --- Donut pies ------------------------------------------------------------
+
+
+def _render_phase_donut(phase_dist: list[dict[str, Any]]) -> str:
+    segments = [
+        (str(row.get("phase", "?")), float(row.get("count", 0)))
+        for row in phase_dist
+        if isinstance(row, dict) and isinstance(row.get("count"), (int, float))
+    ]
+    donut = svg_donut(segments)
+    if not donut:
+        return ""
+    return f"""<div class="rounded-lg border border-gray-200 p-3">
+      <h3 class="text-sm font-semibold text-gray-900 mb-2">Phase Distribution</h3>
+      {donut}
+    </div>"""
+
+
+def _render_status_donut(status_breakdown: list[dict[str, Any]]) -> str:
+    segments = [
+        (str(row.get("status", "?")), float(row.get("count", 0)))
         for row in status_breakdown
-        if isinstance(row, dict)
-        and isinstance(row.get("count"), (int, float))
-        and row.get("count") > 0
+        if isinstance(row, dict) and isinstance(row.get("count"), (int, float))
     ]
-    if len(non_zero) < 2:
+    donut = svg_donut(segments)
+    if not donut:
         return ""
+    return f"""<div class="rounded-lg border border-gray-200 p-3">
+      <h3 class="text-sm font-semibold text-gray-900 mb-2">Status Breakdown</h3>
+      {donut}
+    </div>"""
 
-    title = _safe_mermaid_label(f"Status Breakdown — {indication}", 80)
-    lines = ["### Status Breakdown", "", "```mermaid", f"pie title {title}"]
-    for label, count in non_zero:
-        safe = _safe_mermaid_label(label, 40)
-        lines.append(f'    "{safe}" : {count}')
-    lines.append("```")
-    return "\n".join(lines)
+
+def _render_donut_row(phase_html: str, status_html: str) -> str:
+    panels = [p for p in (phase_html, status_html) if p]
+    if not panels:
+        return ""
+    inner = "\n    ".join(panels)
+    return f"""<section class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    {inner}
+  </section>"""
 
 
 # --- Top sponsors table ----------------------------------------------------
@@ -143,8 +207,6 @@ def _render_status_pie(
 def _render_sponsors_table(top_sponsors: list[dict[str, Any]]) -> str:
     if not top_sponsors:
         return ""
-
-    # Scale bars against the leader's count so the #1 sponsor gets a full bar
     max_count = max(
         (int(s.get("trials", 0)) for s in top_sponsors if isinstance(s, dict)),
         default=0,
@@ -152,73 +214,45 @@ def _render_sponsors_table(top_sponsors: list[dict[str, Any]]) -> str:
     if max_count == 0:
         return ""
 
-    header = (
-        "### Top Sponsors\n\n"
-        "| Rank | Sponsor | Trials | Share |\n"
-        "| ---:| --- | ---:| --- |\n"
-    )
     rows: list[str] = []
     for idx, sponsor in enumerate(top_sponsors, start=1):
         if not isinstance(sponsor, dict):
             continue
-        name = _md_escape_cell(sponsor.get("name") or "—")
+        name = escape_html(sponsor.get("name") or "—")
         count = int(sponsor.get("trials", 0))
-        filled = round((count / max_count) * BAR_WIDTH) if max_count else 0
-        bar = "█" * filled + "░" * (BAR_WIDTH - filled)
-        rows.append(f"| {idx} | {name} | {count} | `{bar}` |")
-    return header + "\n".join(rows)
-
-
-# --- Enrollment over time table --------------------------------------------
-
-
-def _render_enrollment_table(
-    series: list[dict[str, Any]],
-) -> str:
-    """Markdown table + optional trend arrows for enrollment-over-time data.
-
-    No chart — mermaid xychart-beta would be the natural fit but it's beta
-    in mermaid 11.x and crashed LibreChat's sandpack earlier. A table is
-    reliable and still visually informative with trend arrows.
-    """
-    if not series:
-        return ""
-
-    rows_data = [
-        (str(row.get("month", "?")), int(row.get("enrolled", 0)))
-        for row in series
-        if isinstance(row, dict)
-        and isinstance(row.get("enrolled"), (int, float))
-    ]
-    if len(rows_data) < 2:
-        return ""
-
-    header = (
-        "### Enrollment Pace\n\n"
-        "| Period | Enrolled | Δ vs previous |\n"
-        "| --- | ---:| --- |\n"
-    )
-
-    rendered_rows: list[str] = []
-    prev: int | None = None
-    for month, enrolled in rows_data:
-        if prev is None:
-            delta_cell = "—"
-        else:
-            diff = enrolled - prev
-            if diff > 0:
-                delta_cell = f"📈 +{diff:,}".replace(",", ".")
-            elif diff < 0:
-                delta_cell = f"📉 {diff:,}".replace(",", ".")
-            else:
-                delta_cell = "➡️ 0"
-        rendered_rows.append(
-            f"| {_md_escape_cell(month)} | {enrolled:,} | {delta_cell} |".replace(
-                ",", "."
-            )
+        pct = round((count / max_count) * 100) if max_count else 0
+        bar_cell = (
+            f'<div class="flex items-center gap-2">'
+            f'<div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">'
+            f'<div class="h-full bg-blue-500" style="width: {pct}%"></div>'
+            f"</div>"
+            f'<span class="font-mono text-xs text-gray-700 tabular-nums w-10 text-right">'
+            f"{count}</span></div>"
         )
-        prev = enrolled
-    return header + "\n".join(rendered_rows)
+        rows.append(
+            f"      <tr class=\"border-b border-gray-100\">\n"
+            f'        <td class="py-2 pr-3 align-top text-gray-500 tabular-nums">{idx}</td>\n'
+            f'        <td class="py-2 pr-3 align-top font-medium">{name}</td>\n'
+            f'        <td class="py-2 pr-3 align-top">{bar_cell}</td>\n'
+            f"      </tr>"
+        )
+    rows_html = "\n".join(rows)
+
+    return f"""<section>
+    <h3 class="text-sm font-semibold text-gray-900 mb-2">Top Sponsors</h3>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs uppercase text-gray-500 border-b border-gray-200">
+          <th class="py-2 pr-3 w-8">#</th>
+          <th class="py-2 pr-3">Sponsor</th>
+          <th class="py-2 pr-3">Trials</th>
+        </tr>
+      </thead>
+      <tbody>
+{rows_html}
+      </tbody>
+    </table>
+  </section>"""
 
 
 # --- Helpers ---------------------------------------------------------------
@@ -238,25 +272,3 @@ def _cap_sponsors(
     if other_trials > 0:
         top.append({"name": "Other", "trials": other_trials})
     return top
-
-
-def _safe_mermaid_label(text: object, max_length: int = 80) -> str:
-    if text is None:
-        return "(untitled)"
-    s = str(text).replace('"', "").replace("\n", " ").replace("\r", " ").strip()
-    if len(s) > max_length:
-        s = s[: max_length - 1].rstrip() + "…"
-    return s or "(untitled)"
-
-
-def _md_escape(text: object) -> str:
-    if text is None:
-        return ""
-    return str(text).replace("\\", "\\\\").replace("_", "\\_").replace("*", "\\*")
-
-
-def _md_escape_cell(text: object) -> str:
-    if text is None:
-        return ""
-    s = str(text).replace("\n", " ").replace("\r", " ").strip()
-    return s.replace("|", "\\|")
