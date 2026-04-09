@@ -19,13 +19,7 @@ entries:
     for multiple ALK inhibitors. Lorlatinib is approved for ALK-positive NSCLC including
     tumors with acquired resistance mutations.
   typical_values: null
-  related_terms:
-  - EML4-ALK
-  - ALK inhibitor
-  - crizotinib
-  - alectinib
-  - lorlatinib
-  - NSCLC
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -65,17 +59,7 @@ entries:
     ≤0.1% IS). TKI selection and sequencing is guided by BCR-ABL1 kinase domain mutation
     profiling at resistance.
   typical_values: null
-  related_terms:
-  - Philadelphia chromosome
-  - CML
-  - imatinib
-  - dasatinib
-  - nilotinib
-  - bosutinib
-  - ponatinib
-  - asciminib
-  - ABL kinase domain mutation
-  - T315I
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -112,14 +96,7 @@ entries:
     colorectal cancers show a more limited and EGFR-inhibitor-resistant phenotype
     compared to melanoma.
   typical_values: null
-  related_terms:
-  - BRAF V600K
-  - MAPK pathway
-  - MEK inhibitor
-  - dabrafenib
-  - vemurafenib
-  - trametinib
-  - encorafenib
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -154,15 +131,7 @@ entries:
     cancers. Somatic BRCA1 mutations are also actionable in ovarian cancer with FDA-approved
     PARP inhibitors.
   typical_values: null
-  related_terms:
-  - BRCA2 mutation
-  - PARP inhibitor
-  - olaparib
-  - niraparib
-  - talazoparib
-  - homologous recombination deficiency
-  - HRD
-  - hereditary breast and ovarian cancer
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -195,16 +164,7 @@ entries:
     rucaparib. As with BRCA1, somatic BRCA2 mutations also predict PARP inhibitor
     benefit, particularly in ovarian cancer.
   typical_values: null
-  related_terms:
-  - BRCA1 mutation
-  - PARP inhibitor
-  - olaparib
-  - niraparib
-  - rucaparib
-  - talazoparib
-  - HRD
-  - prostate cancer
-  - ovarian cancer
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -236,13 +196,7 @@ entries:
     for osimertinib use. The T790M resistance mutation, detectable on liquid or tissue
     biopsy at progression, also predicts osimertinib response in the second-line setting.
   typical_values: null
-  related_terms:
-  - EGFR exon 19 deletion
-  - EGFR L858R
-  - EGFR T790M
-  - EGFR exon 20 insertion
-  - NSCLC
-  - osimertinib
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -276,14 +230,7 @@ entries:
     for FGFR3-altered locally advanced or metastatic urothelial carcinoma. FGFR1 amplification
     occurs frequently in squamous NSCLC but currently lacks approved targeted therapy.
   typical_values: null
-  related_terms:
-  - FGFR2 fusion
-  - FGFR3 mutation
-  - cholangiocarcinoma
-  - urothelial carcinoma
-  - pemigatinib
-  - futibatinib
-  - erdafitinib
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -318,14 +265,7 @@ entries:
     diagnostics are required for midostaurin, quizartinib, and gilteritinib. FLT3
     mutation status is re-tested at relapse because allelic dynamics can change.
   typical_values: null
-  related_terms:
-  - FLT3-ITD
-  - FLT3-TKD
-  - midostaurin
-  - gilteritinib
-  - quizartinib
-  - AML
-  - leukemia
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -359,14 +299,7 @@ entries:
     adenocarcinoma. The FDA recognizes HER2 IHC and FISH as companion diagnostic methods,
     with IHC 3+ or ISH amplification defining positivity.
   typical_values: null
-  related_terms:
-  - ERBB2
-  - HER2 overexpression
-  - trastuzumab
-  - pertuzumab
-  - T-DM1
-  - trastuzumab deruxtecan
-  - HER2-low
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -405,15 +338,7 @@ entries:
     first-line setting. HRD represents a broader category than BRCA1/2 mutation alone,
     capturing tumors with BRCAness through alternate mechanisms.
   typical_values: null
-  related_terms:
-  - BRCA1 mutation
-  - BRCA2 mutation
-  - PARP inhibitor
-  - olaparib
-  - niraparib
-  - genomic scar
-  - LOH
-  - ovarian cancer
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -448,15 +373,7 @@ entries:
     companion diagnostics are required for ivosidenib and olutasidenib. IDH1 mutation
     testing is also a required component of WHO 2021 glioma classification.
   typical_values: null
-  related_terms:
-  - IDH2 mutation
-  - 2-hydroxyglutarate
-  - ivosidenib
-  - olutasidenib
-  - AML
-  - glioma
-  - cholangiocarcinoma
-  - oncometabolite
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -489,13 +406,7 @@ entries:
     in some studies). IDH1 and IDH2 mutations are mutually exclusive in most tumor
     contexts.
   typical_values: null
-  related_terms:
-  - IDH1 mutation
-  - 2-hydroxyglutarate
-  - enasidenib
-  - AML
-  - glioma
-  - differentiation syndrome
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -529,14 +440,7 @@ entries:
     exon 12, CALR, and MPL mutations also occur), JAK2 V617F testing is a diagnostic
     cornerstone.
   typical_values: null
-  related_terms:
-  - JAK-STAT pathway
-  - myeloproliferative neoplasm
-  - polycythemia vera
-  - myelofibrosis
-  - essential thrombocythemia
-  - ruxolitinib
-  - CALR mutation
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -572,13 +476,7 @@ entries:
     for both agents. KRAS G12C was historically considered undruggable; its selective
     covalent inhibition represents a major advance in RAS-driven oncology.
   typical_values: null
-  related_terms:
-  - KRAS mutation
-  - RAS pathway
-  - sotorasib
-  - adagrasib
-  - NSCLC
-  - colorectal cancer
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -611,13 +509,7 @@ entries:
     and are distinct from MET amplification, which represents a different mechanism
     of MET pathway activation.
   typical_values: null
-  related_terms:
-  - MET amplification
-  - MET kinase inhibitor
-  - capmatinib
-  - tepotinib
-  - NSCLC
-  - HGF
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -651,15 +543,7 @@ entries:
     for these agents. MSI-H colorectal cancer is also excluded from benefit with anti-EGFR
     therapy in the metastatic setting.
   typical_values: null
-  related_terms:
-  - MMR deficiency
-  - dMMR
-  - pembrolizumab
-  - nivolumab
-  - dostarlimab
-  - Lynch syndrome
-  - colorectal cancer
-  - TMB
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -697,16 +581,7 @@ entries:
     predictive marker for 5-FU monotherapy benefit). Germline MMR mutations underlie
     Lynch syndrome, the most common hereditary colorectal cancer syndrome.
   typical_values: null
-  related_terms:
-  - MSI-H
-  - microsatellite instability
-  - Lynch syndrome
-  - MLH1
-  - MSH2
-  - MSH6
-  - PMS2
-  - pembrolizumab
-  - dostarlimab
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -742,14 +617,7 @@ entries:
     used, with NGS recommended for confirmation. Second-generation TRK inhibitors
     (e.g., repotrectinib, selitrectinib) are under development for acquired resistance.
   typical_values: null
-  related_terms:
-  - TrkA
-  - TrkB
-  - TrkC
-  - larotrectinib
-  - entrectinib
-  - infantile fibrosarcoma
-  - tumor-agnostic therapy
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -785,15 +653,7 @@ entries:
     and the FDA specifies which assay is companion diagnostic vs. complementary for
     each drug-indication pair.'
   typical_values: null
-  related_terms:
-  - PD-1
-  - pembrolizumab
-  - atezolizumab
-  - nivolumab
-  - durvalumab
-  - TPS
-  - CPS
-  - immune checkpoint inhibitor
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -827,13 +687,7 @@ entries:
     shown responses in patients previously treated with multikinase inhibitors with
     incidental RET activity.
   typical_values: null
-  related_terms:
-  - RET point mutation
-  - selpercatinib
-  - pralsetinib
-  - NSCLC
-  - papillary thyroid carcinoma
-  - medullary thyroid carcinoma
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -863,13 +717,7 @@ entries:
     per FDA labeling for these agents. ROS1 shares structural homology with ALK, and
     some ALK inhibitors exhibit cross-reactivity with ROS1.
   typical_values: null
-  related_terms:
-  - CD74-ROS1
-  - ROS1 inhibitor
-  - crizotinib
-  - entrectinib
-  - repotrectinib
-  - NSCLC
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -901,13 +749,7 @@ entries:
     TMB varies substantially by tumor type, and the predictive value of the 10 mut/Mb
     threshold is heterogeneous across histologies.
   typical_values: null
-  related_terms:
-  - MSI-H
-  - dMMR
-  - pembrolizumab
-  - immune checkpoint inhibitor
-  - FoundationOne CDx
-  - somatic mutations
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/drugs/science-and-research-drugs/table-pharmacogenomic-biomarkers-drug-labeling
@@ -936,11 +778,7 @@ entries:
     against ALK resistance mutations and improved CNS penetration. ALK rearrangement
     testing by FISH, IHC, or NGS is required to identify eligible patients.
   typical_values: null
-  related_terms:
-  - Tyrosine Kinase Inhibitor
-  - EGFR TKI
-  - ALK fusion
-  - EML4-ALK
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -973,11 +811,7 @@ entries:
     hot flashes, and falls/fractures are recognized class effects; enzalutamide also
     carries a seizure risk.
   typical_values: null
-  related_terms:
-  - androgen deprivation therapy
-  - CYP17A1 inhibitor
-  - castration-resistant prostate cancer
-  - prostate-specific antigen
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1008,11 +842,7 @@ entries:
     Infusion reactions, hepatitis B reactivation, and progressive multifocal leukoencephalopathy
     (PML) are important class risks.
   typical_values: null
-  related_terms:
-  - Bispecific T-Cell Engager
-  - CAR-T Cell Therapy
-  - B-cell lymphoma
-  - CLL
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1043,11 +873,7 @@ entries:
     CD38 expression on red blood cells causes interference with blood bank antibody
     screening that must be managed in transfusion medicine.
   typical_values: null
-  related_terms:
-  - Proteasome Inhibitor
-  - IMiD
-  - multiple myeloma
-  - plasma cell
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1078,10 +904,7 @@ entries:
     lung disease/pneumonitis is an emerging class-specific concern for topoisomerase
     I inhibitor payloads.
   typical_values: null
-  related_terms:
-  - HER2 Inhibitor
-  - monoclonal antibody
-  - cytotoxic payload
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1113,11 +936,7 @@ entries:
     women with intact ovarian function. Musculoskeletal symptoms and bone mineral
     density loss are common class effects requiring monitoring and management.
   typical_values: null
-  related_terms:
-  - Selective Estrogen Receptor Modulator
-  - CDK4/6 Inhibitor
-  - estrogen receptor
-  - CYP19A1
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1148,10 +967,7 @@ entries:
     syndrome and neurological toxicity (immune effector cell-associated neurotoxicity
     syndrome) are class-defining adverse events requiring monitoring and early intervention.
   typical_values: null
-  related_terms:
-  - CAR-T Cell Therapy
-  - Anti-CD20 Monoclonal Antibody
-  - cytokine release syndrome
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1182,11 +998,7 @@ entries:
     monotherapy is associated with paradoxical MAPK activation and cutaneous squamous
     cell carcinoma.
   typical_values: null
-  related_terms:
-  - MEK Inhibitor
-  - BRAF V600E mutation
-  - MAPK pathway
-  - melanoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1216,10 +1028,7 @@ entries:
     to BTK cysteine C481 is the mechanism for first-generation agents, with non-covalent
     reversible inhibitors developed to address C481S resistance mutations.
   typical_values: null
-  related_terms:
-  - Tyrosine Kinase Inhibitor
-  - B-cell receptor signaling
-  - chronic lymphocytic leukemia
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1251,11 +1060,7 @@ entries:
     treatment centers. CAR-T products carry FDA Risk Evaluation and Mitigation Strategies
     (REMS) requirements.
   typical_values: null
-  related_terms:
-  - Bispecific T-Cell Engager
-  - Anti-CD20 Monoclonal Antibody
-  - cytokine release syndrome
-  - BCMA
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1285,11 +1090,7 @@ entries:
     high-risk breast cancer. Neutropenia is a common on-target class toxicity requiring
     dose modifications and monitoring.
   typical_values: null
-  related_terms:
-  - Aromatase Inhibitor
-  - Selective Estrogen Receptor Modulator
-  - hormone receptor-positive breast cancer
-  - retinoblastoma protein
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1319,10 +1120,7 @@ entries:
     with durvalumab for hepatocellular carcinoma. Immune-related adverse events for
     this class are common and may be more severe than those seen with PD-1/PD-L1 blockade.
   typical_values: null
-  related_terms:
-  - Immune Checkpoint Inhibitor
-  - PD-1 Inhibitor
-  - PD-L1 Inhibitor
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1352,10 +1150,7 @@ entries:
     settings. Molecular testing of EGFR mutation status is required before initiating
     this class.
   typical_values: null
-  related_terms:
-  - Tyrosine Kinase Inhibitor
-  - HER2 Inhibitor
-  - EGFR mutation
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1386,11 +1181,7 @@ entries:
     FISH as a prerequisite for treatment. Cardiotoxicity (reduced left ventricular
     ejection fraction) is a class-effect requiring cardiac monitoring.
   typical_values: null
-  related_terms:
-  - EGFR TKI
-  - Antibody-Drug Conjugate
-  - HER2 amplification
-  - HER2 overexpression
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1422,11 +1213,7 @@ entries:
     subject to FDA REMS programs (THALOMID REMS and Revassist). Peripheral neuropathy
     is particularly associated with thalidomide.
   typical_values: null
-  related_terms:
-  - Proteasome Inhibitor
-  - Anti-CD38 Monoclonal Antibody
-  - cereblon
-  - multiple myeloma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1457,12 +1244,7 @@ entries:
     mismatch repair deficiency. Immune-related adverse events affecting any organ
     system are a class effect requiring multidisciplinary management.
   typical_values: null
-  related_terms:
-  - PD-1 Inhibitor
-  - PD-L1 Inhibitor
-  - CTLA-4 Inhibitor
-  - tumor mutational burden
-  - mismatch repair deficiency
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1493,11 +1275,7 @@ entries:
     (uveitis, retinal pigment epitheliopathy), skin rash, and cardiac toxicity are
     recognized class effects.
   typical_values: null
-  related_terms:
-  - BRAF Inhibitor
-  - MAPK pathway
-  - RAS mutation
-  - ERK signaling
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1528,10 +1306,7 @@ entries:
     are class-defining adverse effects. mTOR inhibitors are also used to prevent rejection
     in organ transplantation, which is relevant when managing oncology patients post-transplant.
   typical_values: null
-  related_terms:
-  - PI3K-AKT-mTOR pathway
-  - CDK4/6 Inhibitor
-  - MEK Inhibitor
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1562,11 +1337,7 @@ entries:
     for several indications. Myelodysplastic syndrome and acute myeloid leukemia are
     recognized rare but serious class-effect risks with long-term use.
   typical_values: null
-  related_terms:
-  - BRCA1
-  - BRCA2
-  - homologous recombination deficiency
-  - synthetic lethality
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1596,10 +1367,7 @@ entries:
     adverse events such as pneumonitis, colitis, and endocrinopathies are class effects
     managed with immunosuppression.
   typical_values: null
-  related_terms:
-  - Immune Checkpoint Inhibitor
-  - PD-L1 Inhibitor
-  - CTLA-4 Inhibitor
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1628,10 +1396,7 @@ entries:
     several approvals. The class shares immune-related adverse events with other immune
     checkpoint inhibitors.
   typical_values: null
-  related_terms:
-  - Immune Checkpoint Inhibitor
-  - PD-1 Inhibitor
-  - CTLA-4 Inhibitor
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1662,11 +1427,7 @@ entries:
     for bortezomib (partly mitigated by subcutaneous administration), while carfilzomib
     carries cardiovascular risk including hypertension and cardiac failure.
   typical_values: null
-  related_terms:
-  - IMiD
-  - Anti-CD38 Monoclonal Antibody
-  - multiple myeloma
-  - unfolded protein response
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1696,11 +1457,7 @@ entries:
     venous thromboembolism, and stroke are important risks requiring patient counseling
     and monitoring.
   typical_values: null
-  related_terms:
-  - Aromatase Inhibitor
-  - CDK4/6 Inhibitor
-  - estrogen receptor
-  - hormone receptor-positive breast cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1729,11 +1486,7 @@ entries:
     resistance through secondary mutations or bypass signaling is a major clinical
     challenge, motivating development of successive-generation agents.
   typical_values: null
-  related_terms:
-  - EGFR TKI
-  - ALK TKI
-  - BTK Inhibitor
-  - HER2 Inhibitor
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -1764,10 +1517,7 @@ entries:
     reported to allow cross-trial comparisons. CBR is generally considered a supportive
     rather than primary regulatory endpoint.
   typical_values: null
-  related_terms:
-  - Disease Control Rate
-  - Objective Response Rate
-  - Stable Disease
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -1793,10 +1543,7 @@ entries:
     is demonstrated. Confirmation of CR typically requires a repeat assessment at
     least four weeks after the criteria are first met.
   typical_values: null
-  related_terms:
-  - Partial Response
-  - Objective Response Rate
-  - Pathologic Complete Response
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -1821,10 +1568,7 @@ entries:
     history of slowly progressive tumors. DCR should always be reported alongside
     the duration distribution of the SD component to allow meaningful clinical interpretation.
   typical_values: null
-  related_terms:
-  - Objective Response Rate
-  - Stable Disease
-  - Clinical Benefit Rate
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -1850,10 +1594,7 @@ entries:
     when the benefit is large and durable. Definitions of 'recurrence' must be pre-specified
     and adjudicated consistently.
   typical_values: null
-  related_terms:
-  - Overall Survival
-  - Event-Free Survival
-  - Recurrence-Free Survival
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -1881,9 +1622,7 @@ entries:
     all dose cohorts. Attribution of events to the investigational drug versus disease
     progression or concomitant medications requires careful clinical adjudication.
   typical_values: null
-  related_terms:
-  - Maximum Tolerated Dose
-  - Pharmacokinetics
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -1911,10 +1650,7 @@ entries:
     confidence intervals in the responding population. Pre-specification of the response-confirmation
     requirement and progression criteria is essential for consistent DoR measurement.
   typical_values: null
-  related_terms:
-  - Objective Response Rate
-  - Progression-Free Survival
-  - Disease Control Rate
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -1939,10 +1675,7 @@ entries:
     is robust. Sensitivity analyses exploring individual event components are recommended
     to understand the driver of any observed effect.
   typical_values: null
-  related_terms:
-  - Disease-Free Survival
-  - Progression-Free Survival
-  - Overall Survival
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -1971,10 +1704,7 @@ entries:
     endpoint through disease-specific guidance and through the Oncology Center of
     Excellence's Project Optimus and biomarker qualification programs.
   typical_values: null
-  related_terms:
-  - Complete Response
-  - Disease-Free Survival
-  - Pathologic Complete Response
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3439
@@ -1999,10 +1729,7 @@ entries:
     or the minimum effective dose. Reporting of MTD must be accompanied by the full
     DLT data and the dose-escalation schema used.
   typical_values: null
-  related_terms:
-  - Dose-Limiting Toxicity
-  - Pharmacokinetics
-  - Pharmacodynamics
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2034,11 +1761,7 @@ entries:
     derived threshold or pre-specified clinically meaningful benchmark is required
     for interpretation.
   typical_values: null
-  related_terms:
-  - Complete Response
-  - Partial Response
-  - Disease Control Rate
-  - Duration of Response
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2061,10 +1784,7 @@ entries:
     improvement in OS provides unambiguous evidence of patient benefit. Adequate follow-up
     duration is required, and large sample sizes are often needed to power OS analyses.
   typical_values: null
-  related_terms:
-  - Progression-Free Survival
-  - Disease-Free Survival
-  - Event-Free Survival
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2093,10 +1813,7 @@ entries:
     DFS or OS are typically required when approval is granted on the basis of pCR
     alone.'
   typical_values: null
-  related_terms:
-  - Complete Response
-  - Disease-Free Survival
-  - Overall Survival
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2123,10 +1840,7 @@ entries:
     of the exposure-effect relationship and rational selection of the dose and schedule
     for Phase II testing.
   typical_values: null
-  related_terms:
-  - Pharmacokinetics
-  - Maximum Tolerated Dose
-  - Dose-Limiting Toxicity
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C16681
@@ -2149,10 +1863,7 @@ entries:
     on the magnitude of the effect and the availability of OS data. Agreement on progression
     criteria—typically RECIST—is essential for reliable cross-trial comparisons.
   typical_values: null
-  related_terms:
-  - Overall Survival
-  - Time to Progression
-  - Objective Response Rate
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2179,10 +1890,7 @@ entries:
     submissions for oncology drugs are expected to include population PK analyses
     integrating data across multiple studies to characterize exposure-response relationships.
   typical_values: null
-  related_terms:
-  - Pharmacodynamics
-  - Maximum Tolerated Dose
-  - Dose-Limiting Toxicity
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C16974
@@ -2207,10 +1915,7 @@ entries:
     Disease-specific response criteria in hematology or neuroendocrine tumors may
     apply different thresholds or additional markers beyond radiologic measurement.
   typical_values: null
-  related_terms:
-  - Complete Response
-  - Stable Disease
-  - Objective Response Rate
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2239,9 +1944,7 @@ entries:
     requiring protocol-specified multiple imputation or tipping-point sensitivity
     analyses.
   typical_values: null
-  related_terms:
-  - Quality of Life
-  - Overall Survival
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2274,9 +1977,7 @@ entries:
     into domain-level results to be clinically interpretable, as improvements in one
     domain may offset declines in another.
   typical_values: null
-  related_terms:
-  - Patient-Reported Outcomes
-  - Overall Survival
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2304,10 +2005,7 @@ entries:
     The endpoint is accepted as a primary efficacy endpoint for adjuvant therapy approval
     when the recurrence rate is high enough to provide adequate event-driven power.
   typical_values: null
-  related_terms:
-  - Disease-Free Survival
-  - Event-Free Survival
-  - Overall Survival
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2332,10 +2030,7 @@ entries:
     in an indolent tumor may represent natural history. Duration of SD is therefore
     an important qualifier when reporting disease control outcomes.'
   typical_values: null
-  related_terms:
-  - Partial Response
-  - Progressive Disease
-  - Disease Control Rate
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2361,9 +2056,7 @@ entries:
     of treatment failure must enumerate all stopping rules to ensure consistent data
     collection across sites.
   typical_values: null
-  related_terms:
-  - Time to Progression
-  - Progression-Free Survival
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2388,9 +2081,7 @@ entries:
     be minimal. Protocols using TTP must pre-specify tumor assessment schedules and
     censoring rules to limit assessment-time bias.
   typical_values: null
-  related_terms:
-  - Progression-Free Survival
-  - Time to Treatment Failure
+  related_terms: []
   sources:
   - kind: fda-label
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-trial-endpoints-approval-cancer-drugs-and-biologics
@@ -2420,12 +2111,7 @@ entries:
     is used to identify BRAF amplification alongside other co-occurring resistance
     events.
   typical_values: null
-  related_terms:
-  - BRAF V600E
-  - MAPK pathway reactivation
-  - BRAFi resistance
-  - MEK inhibitor resistance
-  - vemurafenib resistance
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/24265152/
@@ -2460,12 +2146,7 @@ entries:
     implications for clinical trial eligibility and for understanding mechanisms of
     primary versus secondary resistance.
   typical_values: null
-  related_terms:
-  - PARP inhibitor resistance
-  - homologous recombination
-  - BRCA1 mutation
-  - BRCA2 mutation
-  - platinum resistance
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/18264088/
@@ -2496,11 +2177,7 @@ entries:
     care in this setting. Osimertinib is now also used in the first-line setting,
     after which distinct resistance mechanisms (C797S, MET amplification) predominate.
   typical_values: null
-  related_terms:
-  - EGFR exon 19 deletion
-  - EGFR L858R
-  - C797S mutation
-  - osimertinib resistance
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/15728811/
@@ -2533,12 +2210,7 @@ entries:
     co-occur with other resistance mechanisms, making comprehensive molecular profiling
     of progressive lesions essential.
   typical_values: null
-  related_terms:
-  - EGFR TKI resistance
-  - E-cadherin loss
-  - vimentin
-  - AXL upregulation
-  - lineage plasticity
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/20944128/
@@ -2571,13 +2243,7 @@ entries:
     also reduce sensitivity to fulvestrant, underscoring the importance of mutation-specific
     characterization.
   typical_values: null
-  related_terms:
-  - aromatase inhibitor resistance
-  - ER+ breast cancer
-  - fulvestrant resistance
-  - SERD
-  - elacestrant
-  - CDK4/6 inhibitor
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/24185510/
@@ -2611,12 +2277,7 @@ entries:
     ineffective after transformation. Concurrent RB1 and TP53 loss are frequently
     present and may predispose to this transformation.
   typical_values: null
-  related_terms:
-  - EGFR TKI resistance
-  - lineage plasticity
-  - neuroendocrine differentiation
-  - RB1 loss
-  - TP53 loss
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/21430269/
@@ -2653,13 +2314,7 @@ entries:
     This mechanism has been described in melanoma, lung cancer, and other tumor types
     treated with anti-PD-1 agents.
   typical_values: null
-  related_terms:
-  - immune checkpoint inhibitor resistance
-  - antigen presentation
-  - PD-1/PD-L1
-  - B2M mutation
-  - HLA loss
-  - tumor immune evasion
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/28827661/
@@ -2691,11 +2346,7 @@ entries:
     EGFR mutation and high-level MET amplification at progression mandates molecular
     re-testing.
   typical_values: null
-  related_terms:
-  - EGFR TKI resistance
-  - MET exon 14 skipping
-  - bypass signaling
-  - osimertinib resistance
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/17463250/
@@ -2728,11 +2379,7 @@ entries:
     updates. They are essential for comparing outcomes across chemotherapy, targeted
     therapy, and hypomethylating agent studies.
   typical_values: null
-  related_terms:
-  - Lugano Classification
-  - IMWG Criteria
-  - Complete Remission
-  - Hematologic Improvement
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/14630808/
@@ -2766,11 +2413,7 @@ entries:
     importance of incorporating functional imaging metrics alongside morphological
     measurements.
   typical_values: null
-  related_terms:
-  - RECIST 1.1
-  - PERCIST
-  - Gastrointestinal Stromal Tumor
-  - CT Attenuation
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/17470865/
@@ -2804,11 +2447,7 @@ entries:
     used in clinical trials and regulatory submissions. These criteria are accepted
     by FDA and EMA for registration trials in multiple myeloma.
   typical_values: null
-  related_terms:
-  - Cheson Criteria
-  - Complete Response
-  - Minimal Residual Disease
-  - Stringent Complete Response
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/27511158/
@@ -2837,10 +2476,7 @@ entries:
     of progression at a subsequent imaging time point. iRECIST is increasingly recommended
     by regulatory guidance documents for immunotherapy efficacy trials.
   typical_values: null
-  related_terms:
-  - RECIST 1.1
-  - irRC
-  - Pseudoprogression
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/28271869/
@@ -2870,10 +2506,7 @@ entries:
     response kinetics are expected. They preceded iRECIST and informed the development
     of later immune-specific response frameworks.
   typical_values: null
-  related_terms:
-  - iRECIST
-  - RECIST 1.1
-  - Pseudoprogression
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/19934295/
@@ -2903,10 +2536,7 @@ entries:
     CT-only criteria are retained. The criteria are used in pivotal clinical trials
     and are accepted by the FDA and EMA for lymphoma response endpoints.
   typical_values: null
-  related_terms:
-  - Cheson Criteria
-  - Deauville Score
-  - PET-CT Response Assessment
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/25113753/
@@ -2939,11 +2569,7 @@ entries:
     are widely adopted by investigators and sponsors in prostate cancer trials and
     align with FDA guidance on endpoint selection for this disease.
   typical_values: null
-  related_terms:
-  - RECIST 1.1
-  - PSA Response
-  - Bone Scan Progression
-  - Prostate-Specific Antigen
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/26903579/
@@ -2977,11 +2603,7 @@ entries:
     PET infrastructure. PERCIST has growing acceptance in early-phase trials but has
     not yet achieved the same regulatory endorsement as RECIST 1.1.
   typical_values: null
-  related_terms:
-  - RECIST 1.1
-  - Lugano Classification
-  - SUVmax
-  - FDG-PET
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/19403881/
@@ -3014,11 +2636,7 @@ entries:
     trials and are recommended by regulatory agencies for neuro-oncology efficacy
     assessments.
   typical_values: null
-  related_terms:
-  - RECIST 1.1
-  - Pseudoprogression
-  - Glioblastoma Response Assessment
-  - MRI Response
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/20231676/
@@ -3049,11 +2667,7 @@ entries:
     the FDA and EMA accept RECIST 1.1 as the reference method for imaging-based efficacy
     assessment in solid tumor trials.
   typical_values: null
-  related_terms:
-  - iRECIST
-  - PERCIST
-  - RANO Criteria
-  - Choi Criteria
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/19097774/
@@ -3087,11 +2701,7 @@ entries:
     B meeting process. Common oncology applications include adaptive dose-finding
     (Bayesian CRM), seamless Phase II/III designs, and population enrichment.
   typical_values: null
-  related_terms:
-  - Platform Trial
-  - Dose-Escalation Study
-  - Randomized Controlled Trial
-  - Master Protocol
+  related_terms: []
   sources:
   - kind: guideline
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/adaptive-design-clinical-trials-drugs-and-biologics-guidance-industry
@@ -3123,11 +2733,7 @@ entries:
     heterogeneity of response across tumor types. The FDA Master Protocols guidance
     provides regulatory considerations for basket trial design and conduct.
   typical_values: null
-  related_terms:
-  - Umbrella Trial
-  - Platform Trial
-  - Master Protocol
-  - Biomarker-Stratified Trial
+  related_terms: []
   sources:
   - kind: guideline
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/master-protocols-efficient-clinical-trial-design-strategies-expedite-development-oncology-drugs-and
@@ -3160,11 +2766,7 @@ entries:
     of precision medicine drug development. Statistical analysis plans for stratified
     designs must pre-specify subgroup analyses and interaction tests to avoid data-dredging.
   typical_values: null
-  related_terms:
-  - Basket Trial
-  - Umbrella Trial
-  - Randomized Controlled Trial
-  - Master Protocol
+  related_terms: []
   sources:
   - kind: guideline
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/enrichment-strategies-clinical-trials-support-approval-human-drugs-and-biological-products
@@ -3197,10 +2799,7 @@ entries:
     effects and period effects must be assessed and accounted for in the statistical
     analysis.
   typical_values: null
-  related_terms:
-  - Randomized Controlled Trial
-  - Open-Label Trial
-  - Adaptive Trial
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3236,11 +2835,7 @@ entries:
     Pharmacokinetic and pharmacodynamic sampling is integral to modern oncology dose-escalation
     designs.
   typical_values: null
-  related_terms:
-  - Expansion Cohort
-  - Adaptive Trial
-  - Dose-Escalation Study
-  - Single-Arm Trial
+  related_terms: []
   sources:
   - kind: guideline
     url: https://ctep.cancer.gov/protocoldevelopment/policies_guidances.htm
@@ -3270,10 +2865,7 @@ entries:
     of the blind is monitored throughout the trial and emergency unblinding procedures
     are pre-specified for safety events.
   typical_values: null
-  related_terms:
-  - Open-Label Trial
-  - Randomized Controlled Trial
-  - Single-Arm Trial
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3306,11 +2898,7 @@ entries:
     is anticipated from an expansion cohort. Multiple simultaneous expansion cohorts
     targeting different tumor types are common in oncology Phase I programs.
   typical_values: null
-  related_terms:
-  - Dose-Escalation Study
-  - Single-Arm Trial
-  - Basket Trial
-  - Master Protocol
+  related_terms: []
   sources:
   - kind: guideline
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/expanding-access-investigational-drugs-oncology-studies-questions-and-answers-guidance-industry
@@ -3343,12 +2931,7 @@ entries:
     Type B pre-IND meetings to align on statistical analysis plans, sub-study-level
     stopping rules, and multiplicity control strategies.
   typical_values: null
-  related_terms:
-  - Basket Trial
-  - Umbrella Trial
-  - Platform Trial
-  - Adaptive Trial
-  - Biomarker-Stratified Trial
+  related_terms: []
   sources:
   - kind: guideline
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/master-protocols-efficient-clinical-trial-design-strategies-expedite-development-oncology-drugs-and
@@ -3378,10 +2961,7 @@ entries:
     of bias from unblinded outcome assessment is mitigated by use of independent review
     committees for imaging endpoints.
   typical_values: null
-  related_terms:
-  - Double-Blind Trial
-  - Randomized Controlled Trial
-  - Single-Arm Trial
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3415,11 +2995,7 @@ entries:
     for data sharing, type I error control, and comparability of concurrent versus
     non-concurrent controls.
   typical_values: null
-  related_terms:
-  - Basket Trial
-  - Umbrella Trial
-  - Master Protocol
-  - Adaptive Trial
+  related_terms: []
   sources:
   - kind: guideline
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/master-protocols-efficient-clinical-trial-design-strategies-expedite-development-oncology-drugs-and
@@ -3450,11 +3026,7 @@ entries:
     The FDA and EMA generally require at least one adequate and well-controlled RCT
     as primary evidence of effectiveness for full approval.
   typical_values: null
-  related_terms:
-  - Single-Arm Trial
-  - Double-Blind Trial
-  - Open-Label Trial
-  - Biomarker-Stratified Trial
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3484,10 +3056,7 @@ entries:
     to attribute outcomes to the treatment alone, and results are susceptible to patient
     selection bias.
   typical_values: null
-  related_terms:
-  - Randomized Controlled Trial
-  - Expansion Cohort
-  - Basket Trial
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3519,11 +3088,7 @@ entries:
     multiple sub-studies, controlling type I error, and enabling sub-study-specific
     stopping rules.
   typical_values: null
-  related_terms:
-  - Basket Trial
-  - Platform Trial
-  - Master Protocol
-  - Biomarker-Stratified Trial
+  related_terms: []
   sources:
   - kind: guideline
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/master-protocols-efficient-clinical-trial-design-strategies-expedite-development-oncology-drugs-and
@@ -3558,11 +3123,7 @@ entries:
     and sample sizes are small, these studies are hypothesis-generating and not powered
     for clinical efficacy.
   typical_values: null
-  related_terms:
-  - Single-Arm Trial
-  - Dose-Escalation Study
-  - Expansion Cohort
-  - Biomarker-Stratified Trial
+  related_terms: []
   sources:
   - kind: publication
     url: https://pubmed.ncbi.nlm.nih.gov/22262796
@@ -3597,10 +3158,7 @@ entries:
     overall survival (OS), and treatment duration is typically fixed (e.g., 6 months
     for adjuvant colon cancer chemotherapy).
   typical_values: null
-  related_terms:
-  - neoadjuvant-therapy
-  - consolidation-therapy
-  - treatment-line-first-line
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3638,10 +3196,7 @@ entries:
     consolidation may refer to high-dose chemotherapy followed by autologous stem
     cell transplantation performed after initial response.
   typical_values: null
-  related_terms:
-  - induction-therapy
-  - maintenance-therapy
-  - complete-remission
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3677,10 +3232,7 @@ entries:
     require a treatment-naive population or clearly defined prior-therapy exclusion
     criteria.
   typical_values: null
-  related_terms:
-  - second-line-therapy
-  - treatment-naive
-  - induction-therapy
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3719,11 +3271,7 @@ entries:
     Response assessment after induction determines eligibility for consolidation or
     maintenance.
   typical_values: null
-  related_terms:
-  - consolidation-therapy
-  - maintenance-therapy
-  - neoadjuvant-therapy
-  - complete-remission
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3761,10 +3309,7 @@ entries:
     some frameworks count it as a continuation of first-line rather than a separate
     line.'
   typical_values: null
-  related_terms:
-  - induction-therapy
-  - consolidation-therapy
-  - first-line-therapy
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3805,10 +3350,7 @@ entries:
     HER2-positive breast cancer after neoadjuvant taxane plus trastuzumab) is increasingly
     part of the treatment paradigm.
   typical_values: null
-  related_terms:
-  - adjuvant-therapy
-  - induction-therapy
-  - pathologic-complete-response
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3849,11 +3391,7 @@ entries:
     for intensive regimens. The term carries no fixed numeric line designation and
     may overlap with second-line or third-line contexts.
   typical_values: null
-  related_terms:
-  - second-line-therapy
-  - third-line-therapy
-  - refractory-disease
-  - stem-cell-transplant
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3883,10 +3421,7 @@ entries:
     including whether maintenance continuation of a first-line agent counts as a separate
     line.
   typical_values: null
-  related_terms:
-  - first-line-therapy
-  - third-line-therapy
-  - salvage-therapy
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3922,10 +3457,7 @@ entries:
     lower and trials often use overall survival or progression-free survival as primary
     endpoints.
   typical_values: null
-  related_terms:
-  - second-line-therapy
-  - salvage-therapy
-  - refractory-disease
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -3961,8 +3493,7 @@ entries:
     typical_n: 10–15
     dose_level: subtherapeutic (≤1/100 of NOAEL)
     duration: days to weeks
-  related_terms:
-  - trial-phase-1
+  related_terms: []
   sources:
   - kind: guideline
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/exploratory-ind-studies
@@ -3992,10 +3523,7 @@ entries:
     typical_n: 20–80
     duration: months to 1–2 years
     primary_objective: safety/MTD/dose finding
-  related_terms:
-  - trial-phase-0
-  - trial-phase-1-2
-  - trial-phase-2
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C15600
@@ -4024,9 +3552,7 @@ entries:
     typical_n: 40–150
     duration: 1–3 years
     primary_objective: MTD + preliminary efficacy
-  related_terms:
-  - trial-phase-1
-  - trial-phase-2
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C15693
@@ -4055,10 +3581,7 @@ entries:
     typical_n: 100–300
     duration: 1–3 years
     primary_objective: preliminary efficacy, dose optimization
-  related_terms:
-  - trial-phase-1
-  - trial-phase-2-3
-  - trial-phase-3
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C15601
@@ -4088,9 +3611,7 @@ entries:
     typical_n: 200–800
     duration: 2–5 years
     primary_objective: dose/population selection + confirmatory efficacy
-  related_terms:
-  - trial-phase-2
-  - trial-phase-3
+  related_terms: []
   sources:
   - kind: guideline
     url: https://www.fda.gov/regulatory-information/search-fda-guidance-documents/adaptive-design-clinical-trials-drugs-and-biologics-guidance-industry
@@ -4122,10 +3643,7 @@ entries:
     typical_n: 300–3000+
     duration: 3–8 years
     primary_objective: confirmatory efficacy and safety
-  related_terms:
-  - trial-phase-2
-  - trial-phase-2-3
-  - trial-phase-4
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C15602
@@ -4156,9 +3674,7 @@ entries:
     typical_n: hundreds to thousands
     duration: years to decades
     primary_objective: post-approval safety, effectiveness, label expansion
-  related_terms:
-  - trial-phase-3
-  - trial-phase-post-marketing-surveillance
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C15603
@@ -4186,8 +3702,7 @@ entries:
     Sentinel System and EMA's EudraVigilance database are key infrastructure for systematic
     post-marketing safety monitoring.
   typical_values: null
-  related_terms:
-  - trial-phase-4
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4219,10 +3734,7 @@ entries:
     and investigators report this status to distinguish an operationally active trial
     from one that is both open to and seeking new participants.
   typical_values: null
-  related_terms:
-  - trial-status-recruiting
-  - trial-status-completed
-  - trial-status-suspended
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4248,9 +3760,7 @@ entries:
     within the timeframes established by applicable regulations such as the FDA Amendments
     Act of 2007.
   typical_values: null
-  related_terms:
-  - trial-status-active-not-recruiting
-  - trial-status-terminated
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4276,9 +3786,7 @@ entries:
     from members of the public are not accepted under this status. It does not imply
     that the study is closed; rather, access is controlled by the research team.
   typical_values: null
-  related_terms:
-  - trial-status-recruiting
-  - trial-status-active-not-recruiting
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4302,9 +3810,7 @@ entries:
     first participant's first visit. It signals to patients and referring clinicians
     that enrollment will open in the future but is not currently possible.
   typical_values: null
-  related_terms:
-  - trial-status-recruiting
-  - trial-status-withdrawn
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4328,10 +3834,7 @@ entries:
     sample size occurs. Sites may open or close on a rolling basis while the overall
     trial remains in a recruiting state.
   typical_values: null
-  related_terms:
-  - trial-status-not-yet-recruiting
-  - trial-status-active-not-recruiting
-  - trial-status-enrolling-by-invitation
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4357,10 +3860,7 @@ entries:
     suspension, ongoing participant safety monitoring typically continues even if
     new enrollment and interventional procedures are paused.
   typical_values: null
-  related_terms:
-  - trial-status-terminated
-  - trial-status-active-not-recruiting
-  - trial-status-recruiting
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4385,10 +3885,7 @@ entries:
     to standard-of-care alternatives. Sponsors are required to report results and
     reasons for early termination on the study registry within mandated timeframes.
   typical_values: null
-  related_terms:
-  - trial-status-suspended
-  - trial-status-withdrawn
-  - trial-status-completed
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4414,10 +3911,7 @@ entries:
     state of the trial is uncertain. Responsible parties are required to update their
     records at least every 12 months to maintain an accurate and current status.
   typical_values: null
-  related_terms:
-  - trial-status-completed
-  - trial-status-terminated
-  - trial-status-suspended
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4441,9 +3935,7 @@ entries:
     there are no individual-level safety or efficacy data to report. The registry
     record is retained for transparency and to prevent duplicate registration.
   typical_values: null
-  related_terms:
-  - trial-status-not-yet-recruiting
-  - trial-status-terminated
+  related_terms: []
   sources:
   - kind: definition
     url: null
@@ -4470,10 +3962,7 @@ entries:
     and CAR-T cell therapies (tisagenlecleucel) are approved for relapsed/refractory
     B-cell ALL. MRD assessment guides consolidation and transplant decisions.
   typical_values: null
-  related_terms:
-  - Acute Myeloid Leukemia
-  - Chronic Lymphocytic Leukemia
-  - Diffuse Large B-Cell Lymphoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3167
@@ -4500,11 +3989,7 @@ entries:
     transplantation remains the standard consolidation for eligible intermediate-
     and high-risk patients in first remission.
   typical_values: null
-  related_terms:
-  - Acute Lymphoblastic Leukemia
-  - Chronic Myeloid Leukemia
-  - Chronic Lymphocytic Leukemia
-  - Multiple Myeloma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3171
@@ -4537,9 +4022,7 @@ entries:
     enfortumab vedotin plus pembrolizumab is FDA-approved for first-line cisplatin-ineligible
     patients.
   typical_values: null
-  related_terms:
-  - Renal Cell Carcinoma
-  - Prostate Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4912
@@ -4563,10 +4046,7 @@ entries:
     chemotherapy, CDK4/6 inhibitors, or PARP inhibitors. Routine screening mammography
     enables early detection.
   typical_values: null
-  related_terms:
-  - Triple-Negative Breast Cancer
-  - HER2-Positive Breast Cancer
-  - Hormone Receptor-Positive Breast Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4872
@@ -4593,9 +4073,7 @@ entries:
     plus chemotherapy is approved as first-line treatment for PD-L1-positive (CPS
     ≥1) recurrent/metastatic disease.
   typical_values: null
-  related_terms:
-  - Ovarian Cancer
-  - Endometrial Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4037
@@ -4626,9 +4104,7 @@ entries:
     IDH1 mutations (ivosidenib), BRAF V600E (dabrafenib plus trametinib), and HER2
     amplification (trastuzumab deruxtecan).'
   typical_values: null
-  related_terms:
-  - Hepatocellular Carcinoma
-  - Pancreatic Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4309
@@ -4656,10 +4132,7 @@ entries:
     venetoclax combined with obinutuzumab. Molecular prognostic factors include IGHV
     mutation status, del(17p)/TP53 mutation, and del(11q).
   typical_values: null
-  related_terms:
-  - Acute Lymphoblastic Leukemia
-  - Follicular Lymphoma
-  - Mantle Cell Lymphoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3163
@@ -4688,9 +4161,7 @@ entries:
     deep molecular responses. Mutation analysis of the BCR-ABL1 kinase domain guides
     TKI selection in resistant/intolerant disease.
   typical_values: null
-  related_terms:
-  - Acute Myeloid Leukemia
-  - Acute Lymphoblastic Leukemia
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3174
@@ -4718,9 +4189,7 @@ entries:
     with bevacizumab or EGFR inhibitors (in RAS/BRAF wild-type tumors). MSI-high tumors
     are highly responsive to immune checkpoint inhibition.
   typical_values: null
-  related_terms:
-  - Gastric Cancer
-  - Esophageal Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4978
@@ -4747,8 +4216,7 @@ entries:
     rucaparib) for BRCA-mutated disease. PSMA PET imaging is used for staging and
     selecting patients for lutetium-PSMA therapy.
   typical_values: null
-  related_terms:
-  - Prostate Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -4779,11 +4247,7 @@ entries:
     CAR-T therapies (axicabtagene ciloleucel, lisocabtagene maraleucel, tisagenlecleucel)
     are approved for relapsed/refractory disease.
   typical_values: null
-  related_terms:
-  - Follicular Lymphoma
-  - Hodgkin Lymphoma
-  - Mantle Cell Lymphoma
-  - Chronic Lymphocytic Leukemia
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3648
@@ -4812,9 +4276,7 @@ entries:
     lenvatinib plus pembrolizumab is approved for advanced endometrial carcinoma regardless
     of MMR/MSI status after prior platinum-based therapy.
   typical_values: null
-  related_terms:
-  - Ovarian Cancer
-  - Cervical Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4910
@@ -4844,10 +4306,7 @@ entries:
     chemotherapy with nivolumab; HER2 testing is required for adenocarcinoma as trastuzumab
     plus chemotherapy plus pembrolizumab is approved for HER2-positive tumors.'
   typical_values: null
-  related_terms:
-  - Gastric Cancer
-  - Head and Neck Squamous Cell Carcinoma
-  - Colorectal Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4024
@@ -4874,11 +4333,7 @@ entries:
     include obinutuzumab-based regimens, PI3K inhibitors, and bispecific antibodies
     for relapsed/refractory disease.
   typical_values: null
-  related_terms:
-  - Diffuse Large B-Cell Lymphoma
-  - Hodgkin Lymphoma
-  - Chronic Lymphocytic Leukemia
-  - Mantle Cell Lymphoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3209
@@ -4908,10 +4363,7 @@ entries:
     advanced unresectable disease; perioperative FLOT is standard for resectable gastric/GEJ
     adenocarcinoma.
   typical_values: null
-  related_terms:
-  - Esophageal Cancer
-  - Colorectal Cancer
-  - Pancreatic Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4004
@@ -4937,9 +4389,7 @@ entries:
     predicts benefit from temozolomide. Tumor treating fields (TTFields) with maintenance
     temozolomide is an approved option; prognosis remains poor despite treatment.
   typical_values: null
-  related_terms:
-  - Mesothelioma
-  - Sarcoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3058
@@ -4966,9 +4416,7 @@ entries:
     and lenvatinib remain alternative first-line options. Surveillance with ultrasound
     and AFP is recommended in high-risk populations.
   typical_values: null
-  related_terms:
-  - Cholangiocarcinoma
-  - Pancreatic Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C2956
@@ -4995,10 +4443,7 @@ entries:
     lines. HER2 testing (IHC and ISH) is mandatory for all newly diagnosed invasive
     breast cancers.
   typical_values: null
-  related_terms:
-  - Breast Cancer
-  - Triple-Negative Breast Cancer
-  - Hormone Receptor-Positive Breast Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -5025,9 +4470,7 @@ entries:
     platinum plus 5-fluorouracil plus cetuximab (EXTREME) or pembrolizumab with or
     without chemotherapy depending on PD-L1 expression.
   typical_values: null
-  related_terms:
-  - Esophageal Cancer
-  - Melanoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4044
@@ -5057,10 +4500,7 @@ entries:
     therapy and brentuximab vedotin have improved outcomes particularly in advanced
     disease.
   typical_values: null
-  related_terms:
-  - Diffuse Large B-Cell Lymphoma
-  - Follicular Lymphoma
-  - Mantle Cell Lymphoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C9357
@@ -5086,10 +4526,7 @@ entries:
     in HR+/HER2-negative metastatic disease. Disease may exhibit late recurrence,
     necessitating extended endocrine therapy in high-risk patients.
   typical_values: null
-  related_terms:
-  - Breast Cancer
-  - Triple-Negative Breast Cancer
-  - HER2-Positive Breast Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
@@ -5116,10 +4553,7 @@ entries:
     MCL; brexucabtagene autoleucel (CAR-T) is approved in the relapsed setting. The
     blastoid and pleomorphic variants carry a particularly poor prognosis.
   typical_values: null
-  related_terms:
-  - Diffuse Large B-Cell Lymphoma
-  - Follicular Lymphoma
-  - Chronic Lymphocytic Leukemia
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3476
@@ -5145,8 +4579,7 @@ entries:
     or targeted therapy for BRAF-mutated disease. Surgical management dominates early-stage
     treatment.
   typical_values: null
-  related_terms:
-  - Head and Neck Squamous Cell Carcinoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3224
@@ -5175,9 +4608,7 @@ entries:
     extrapleural pneumonectomy) are reserved for selected patients at specialized
     centers.
   typical_values: null
-  related_terms:
-  - Non-Small Cell Lung Cancer
-  - Sarcoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3234
@@ -5207,10 +4638,7 @@ entries:
     including IMiDs, proteasome inhibitors, anti-CD38 antibodies, BCMA-targeted agents
     (belantamab, teclistamab, ciltacabtagene), and CAR-T therapies.
   typical_values: null
-  related_terms:
-  - Acute Myeloid Leukemia
-  - Chronic Lymphocytic Leukemia
-  - Diffuse Large B-Cell Lymphoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3242
@@ -5243,9 +4671,7 @@ entries:
     (Lutathera) peptide receptor radionuclide therapy is approved for somatostatin
     receptor-positive GEP-NETs.
   typical_values: null
-  related_terms:
-  - Small Cell Lung Cancer
-  - Pancreatic Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4807
@@ -5272,10 +4698,7 @@ entries:
     and targeted agents for driver-mutated disease (EGFR, ALK, ROS1, KRAS, MET, RET,
     NTRK, BRAF). Histologic and molecular subtyping is essential for treatment selection.
   typical_values: null
-  related_terms:
-  - Small Cell Lung Cancer
-  - Adenocarcinoma of the Lung
-  - Squamous Cell Carcinoma of the Lung
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C2926
@@ -5303,9 +4726,7 @@ entries:
     BRCA1/2-mutated and HRD-positive tumors. BRCA1/2 germline and somatic testing
     is recommended for all patients with epithelial ovarian cancer.
   typical_values: null
-  related_terms:
-  - Cervical Cancer
-  - Endometrial Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4908
@@ -5332,10 +4753,7 @@ entries:
     have maintenance approval in platinum-sensitive BRCA-mutated metastatic disease.
     KRAS G12C and G12D targeted therapies are under active investigation.
   typical_values: null
-  related_terms:
-  - Cholangiocarcinoma
-  - Neuroendocrine Tumor
-  - Hepatocellular Carcinoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C3850
@@ -5361,9 +4779,7 @@ entries:
     (enzalutamide, abiraterone, apalutamide, darolutamide), chemotherapy, or PARP
     inhibitors in BRCA-mutated disease.
   typical_values: null
-  related_terms:
-  - Castration-Resistant Prostate Cancer
-  - Renal Cell Carcinoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C7378
@@ -5391,9 +4807,7 @@ entries:
     including VHL, PBRM1, and other mutations can inform prognosis. Metastatic RCC
     prognosis has significantly improved with contemporary immunotherapy-based regimens.
   typical_values: null
-  related_terms:
-  - Bladder Cancer
-  - Prostate Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4033
@@ -5425,9 +4839,7 @@ entries:
     profiling for actionable alterations (NTRK fusions, MDM2 amplification) may guide
     targeted therapy selection.
   typical_values: null
-  related_terms:
-  - Mesothelioma
-  - Glioblastoma
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C9118
@@ -5451,9 +4863,7 @@ entries:
     The prognosis is poor due to frequent relapse and development of chemotherapy
     resistance.
   typical_values: null
-  related_terms:
-  - Non-Small Cell Lung Cancer
-  - Neuroendocrine Tumor
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&code=C4917
@@ -5478,10 +4888,7 @@ entries:
     locally advanced or metastatic TNBC. BRCA1/2 germline mutation testing is recommended,
     as PARP inhibitors are approved for BRCA-mutated metastatic TNBC.
   typical_values: null
-  related_terms:
-  - Breast Cancer
-  - HER2-Positive Breast Cancer
-  - Hormone Receptor-Positive Breast Cancer
+  related_terms: []
   sources:
   - kind: nci-thesaurus
     url: null
