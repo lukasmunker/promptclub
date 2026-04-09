@@ -27,6 +27,14 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.theme import (
+    BAR_FILL_PRIMARY,
+    BAR_TRACK,
+    HEADER_BORDER,
+    TILE_ROSE,
+    TILE_TEAL,
+    TILE_TEAL_DARK,
+)
 from app.viz.utils.html import assert_safe_html, escape_html, svg_donut
 from app.viz.utils.identifiers import make_identifier
 
@@ -71,7 +79,7 @@ def build(
     )
 
     raw = f"""<div class="p-4 font-sans text-gray-900 space-y-4">
-  <header class="border-b border-gray-200 pb-2">
+  <header class="{HEADER_BORDER} pb-2">
     <h2 class="text-base font-semibold">{escape_html(title)}</h2>
     <p class="text-xs text-gray-500">Source: ClinicalTrials.gov</p>
   </header>
@@ -130,10 +138,10 @@ def _render_stat_tiles(
         return ""
 
     tiles = [
-        ("Total Trials", total_trials, "blue"),
-        ("Phases", distinct_phases, "blue"),
-        ("Recruiting", recruiting, "emerald"),
-        ("Sponsors", sponsor_count, "purple"),
+        ("Total Trials", total_trials, "teal_dark"),
+        ("Phases", distinct_phases, "teal"),
+        ("Recruiting", recruiting, "teal_dark"),
+        ("Sponsors", sponsor_count, "rose"),
     ]
     rendered = "\n    ".join(_tile(label, value, color) for label, value, color in tiles)
     return f"""<section>
@@ -146,10 +154,9 @@ def _render_stat_tiles(
 
 def _tile(label: str, value: int, color: str) -> str:
     color_classes = {
-        "blue": "bg-blue-50 text-blue-700 border-blue-200",
-        "emerald": "bg-emerald-50 text-emerald-700 border-emerald-200",
-        "amber": "bg-amber-50 text-amber-700 border-amber-200",
-        "purple": "bg-purple-50 text-purple-700 border-purple-200",
+        "teal": TILE_TEAL,
+        "teal_dark": TILE_TEAL_DARK,
+        "rose": TILE_ROSE,
     }.get(color, "bg-gray-50 text-gray-700 border-gray-200")
     display = f"{value:,}".replace(",", ".") if isinstance(value, int) else "—"
     return f"""<div class="rounded-lg border {color_classes} p-3 text-center">
@@ -170,7 +177,7 @@ def _render_phase_donut(phase_dist: list[dict[str, Any]]) -> str:
     donut = svg_donut(segments)
     if not donut:
         return ""
-    return f"""<div class="rounded-lg border border-gray-200 p-3">
+    return f"""<div class="rounded-lg border border-teal-200 p-3">
       <h3 class="text-sm font-semibold text-gray-900 mb-2">Phase Distribution</h3>
       {donut}
     </div>"""
@@ -185,7 +192,7 @@ def _render_status_donut(status_breakdown: list[dict[str, Any]]) -> str:
     donut = svg_donut(segments)
     if not donut:
         return ""
-    return f"""<div class="rounded-lg border border-gray-200 p-3">
+    return f"""<div class="rounded-lg border border-teal-200 p-3">
       <h3 class="text-sm font-semibold text-gray-900 mb-2">Status Breakdown</h3>
       {donut}
     </div>"""
@@ -223,8 +230,8 @@ def _render_sponsors_table(top_sponsors: list[dict[str, Any]]) -> str:
         pct = round((count / max_count) * 100) if max_count else 0
         bar_cell = (
             f'<div class="flex items-center gap-2">'
-            f'<div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">'
-            f'<div class="h-full bg-blue-500" style="width: {pct}%"></div>'
+            f'<div class="flex-1 h-2 rounded-full {BAR_TRACK} overflow-hidden">'
+            f'<div class="h-full {BAR_FILL_PRIMARY}" style="width: {pct}%"></div>'
             f"</div>"
             f'<span class="font-mono text-xs text-gray-700 tabular-nums w-10 text-right">'
             f"{count}</span></div>"

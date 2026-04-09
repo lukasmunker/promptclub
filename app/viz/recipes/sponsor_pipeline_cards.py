@@ -12,6 +12,7 @@ from collections import defaultdict
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.theme import BADGE_MUTED, BADGE_NCT, PILL_PHASE
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
@@ -95,17 +96,14 @@ def _render_card(trial: dict[str, Any]) -> str:
     nct_badge = (
         f'<a href="https://clinicaltrials.gov/study/{escape_html(nct)}" '
         f'target="_blank" rel="noopener" '
-        f'class="font-mono text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 '
-        f'border border-blue-200 hover:bg-blue-100">{escape_html(nct)}</a>'
+        f'class="{BADGE_NCT}">{escape_html(nct)}</a>'
         if trial.get("nct_id")
-        else '<span class="font-mono text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">(no id)</span>'
+        else f'<span class="{BADGE_MUTED}">(no id)</span>'
     )
 
     phase = trial.get("phase")
     phase_pill = (
-        f'<span class="inline-flex items-center text-xs px-2 py-0.5 rounded '
-        f'bg-amber-50 text-amber-700 border border-amber-200">'
-        f"{escape_html(phase)}</span>"
+        f'<span class="{PILL_PHASE}">{escape_html(phase)}</span>'
         if phase
         else ""
     )
