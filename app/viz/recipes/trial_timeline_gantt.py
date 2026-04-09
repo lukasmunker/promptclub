@@ -14,6 +14,7 @@ from collections import defaultdict
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.theme import MERMAID_THEME_DIRECTIVE
 from app.viz.utils.identifiers import make_identifier
 from app.viz.utils.mermaid import is_valid_iso_date, safe_label
 
@@ -61,7 +62,10 @@ def build(
 
 
 def _render_gantt(title: str, trials: list[dict[str, Any]]) -> str:
+    # Prepend the Pharmafuse Mermaid theme directive so the gantt picks up
+    # the teal brand palette instead of Mermaid's default blue/pink.
     lines: list[str] = [
+        MERMAID_THEME_DIRECTIVE,
         "gantt",
         "    dateFormat  YYYY-MM-DD",
         f"    title       {safe_label(title, max_length=80)}",

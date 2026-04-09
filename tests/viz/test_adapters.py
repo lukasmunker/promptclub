@@ -442,8 +442,9 @@ def test_build_trial_comparison_envelope_renders_gantt():
     assert env["ui"]["recipe"] == "trial_timeline_gantt"
     assert env["ui"]["artifact"]["type"] == "mermaid"
     raw = env["ui"]["raw"]
-    # Pure mermaid source — no markdown wrapper, no ```mermaid fence
-    assert raw.startswith("gantt")
+    # Starts with the Pharmafuse Mermaid theme directive, then the gantt
+    assert raw.startswith("%%{init:")
+    assert "\ngantt\n" in raw
     assert "```mermaid" not in raw
     assert "NCT00000001" in raw
     assert "NCT00000002" in raw

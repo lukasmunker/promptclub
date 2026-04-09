@@ -64,18 +64,19 @@ def assert_safe_html(body: str) -> None:
             )
 
 
-# Default donut palette (tailwind 500-shade hexes). Segments beyond index 7
-# wrap around. Keep alphabetically reasonable contrast so small slices stay
-# legible next to the legend.
+# Default donut palette — teal gradient matching app/viz/theme.DONUT_PALETTE
+# (re-declared here to avoid a circular import; keep in sync when the theme
+# changes). Five teal shades from darkest to lightest, then a rose accent,
+# then two diagram-sampled custom values. Wraps after 8 slices.
 _DONUT_COLORS = (
-    "#3b82f6",  # blue-500
-    "#10b981",  # emerald-500
-    "#f59e0b",  # amber-500
-    "#8b5cf6",  # violet-500
-    "#ec4899",  # pink-500
+    "#134e4a",  # teal-900 — darkest
+    "#0f766e",  # teal-700
     "#14b8a6",  # teal-500
-    "#f43f5e",  # rose-500
-    "#6366f1",  # indigo-500
+    "#5eead4",  # teal-300
+    "#ccfbf1",  # teal-100 — lightest
+    "#e11d48",  # rose-600 — accent
+    "#1b5f55",  # custom dark teal from the Pharmafuse diagram
+    "#a5e5d9",  # custom mint from the Pharmafuse diagram
 )
 
 
