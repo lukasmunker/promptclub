@@ -236,3 +236,159 @@ def test_mcp_output_never_emits_no_visualization_marker():
         assert ":::artifact" in text
         assert "[NO VISUALIZATION]" not in text
         assert "[NO DATA AVAILABLE]" not in text
+
+
+# --- Knowledge annotations glossary ----------------------------------------
+
+
+def test_envelope_to_llm_text_includes_glossary_when_annotations_present():
+    """When the envelope's data dict carries knowledge_annotations, the
+    LLM-facing text MUST include a ## Glossary section with deduplicated
+    entries. Without this, only info_card surfaces annotations; every
+    other recipe silently drops them."""
+    envelope = {
+        "ui": {
+            "recipe": "trial_search_results",
+            "artifact": {
+                "identifier": "test-id",
+                "type": "html",
+                "title": "Test",
+            },
+            "raw": "<div>test</div>",
+        },
+        "data": {
+            "results": [],
+            "knowledge_annotations": [
+                {
+                    "field_path": "results[0].phase",
+                    "matched_term": "Phase 3",
+                    "lexicon_id": "trial-phase-3",
+                    "short_definition": "Late-stage clinical trial confirming efficacy.",
+                    "clinical_context": "x",
+                    "review_status": "llm-generated",
+                },
+                {
+                    "field_path": "results[0].endpoint",
+                    "matched_term": "Overall Survival",
+                    "lexicon_id": "endpoint-os",
+                    "short_definition": "Time from randomization to death from any cause.",
+                    "clinical_context": "x",
+                    "review_status": "llm-generated",
+                },
+            ],
+        },
+        "sources": [
+            {
+                "kind": "clinicaltrials.gov",
+                "id": "NCT01234567",
+                "url": "https://clinicaltrials.gov/study/NCT01234567",
+                "retrieved_at": "2026-04-09T12:00:00Z",
+            }
+        ],
+    }
+
+    text = envelope_to_llm_text(envelope)
+    assert "## Glossary" in text
+    assert "**Phase 3**" in text
+    assert "Late-stage clinical trial" in text
+    assert "**Overall Survival**" in text
+    # Glossary appears between the artifact block and the sources footer
+    artifact_idx = text.index(":::artifact")
+    glossary_idx = text.index("## Glossary")
+    sources_idx = text.index("Sources:")
+    assert artifact_idx < glossary_idx < sources_idx
+
+
+def test_envelope_to_llm_text_omits_glossary_when_no_annotations():
+    """Without annotations, the glossary section must not appear."""
+    envelope = {
+        "ui": {
+            "recipe": "trial_search_results",
+            "artifact": {
+                "identifier": "test-id",
+                "type": "html",
+                "title": "Test",
+            },
+            "raw": "<div>test</div>",
+        },
+        "data": {"results": []},
+        "sources": [],
+    }
+
+    text = envelope_to_llm_text(envelope)
+    assert "## Glossary" not in text
+
+
+def test_envelope_to_llm_text_glossary_dedupes_by_lexicon_id():
+    """Repeated annotations for the same lexicon_id must collapse to a
+    single glossary line (first occurrence wins)."""
+    envelope = {
+        "ui": {
+            "recipe": "trial_search_results",
+            "artifact": {
+                "identifier": "t",
+                "type": "html",
+                "title": "T",
+            },
+            "raw": "<div/>",
+        },
+        "data": {
+            "knowledge_annotations": [
+                {
+                    "field_path": "a",
+                    "matched_term": "Phase 3",
+                    "lexicon_id": "trial-phase-3",
+                    "short_definition": "First def.",
+                    "clinical_context": "x",
+                    "review_status": "llm-generated",
+                },
+                {
+                    "field_path": "b",
+                    "matched_term": "Phase 3",
+                    "lexicon_id": "trial-phase-3",
+                    "short_definition": "Second def (should be dropped).",
+                    "clinical_context": "x",
+                    "review_status": "llm-generated",
+                },
+            ]
+        },
+        "sources": [],
+    }
+    text = envelope_to_llm_text(envelope)
+    assert text.count("**Phase 3**") == 1
+    assert "First def." in text
+    assert "Second def" not in text
+
+
+def test_envelope_to_llm_text_glossary_truncates_long_definitions():
+    """Definitions longer than 200 chars must be truncated with an ellipsis."""
+    long_def = "x" * 500
+    envelope = {
+        "ui": {
+            "recipe": "trial_search_results",
+            "artifact": {
+                "identifier": "t",
+                "type": "html",
+                "title": "T",
+            },
+            "raw": "<div/>",
+        },
+        "data": {
+            "knowledge_annotations": [
+                {
+                    "field_path": "a",
+                    "matched_term": "Phase 3",
+                    "lexicon_id": "trial-phase-3",
+                    "short_definition": long_def,
+                    "clinical_context": "x",
+                    "review_status": "llm-generated",
+                },
+            ]
+        },
+        "sources": [],
+    }
+    text = envelope_to_llm_text(envelope)
+    # The full 500-char definition must not appear
+    assert long_def not in text
+    # But the truncation marker must
+    assert "…" in text
