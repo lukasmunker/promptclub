@@ -1,0 +1,30 @@
+{
+  "indication": "NSCLC",
+  "title": "NSCLC Landscape",
+  "phase_distribution": [
+    { "phase": "Phase 1", "count": 42 },
+    { "phase": "Phase 1/2", "count": 18 },
+    { "phase": "Phase 2", "count": 78 },
+    { "phase": "Phase 3", "count": 35 },
+    { "phase": "Phase 4", "count": 12 }
+  ],
+  "status_breakdown": [
+    { "status": "Recruiting", "count": 95 },
+    { "status": "Active, not recruiting", "count": 52 },
+    { "status": "Completed", "count": 38 }
+  ],
+  "top_sponsors": [
+    { "name": "Merck Sharp & Dohme", "trials": 24 },
+    { "name": "Hoffmann-La Roche", "trials": 19 },
+    { "name": "AstraZeneca", "trials": 17 },
+    { "name": "Bristol-Myers Squibb", "trials": 15 },
+    { "name": "Pfizer", "trials": 12 }
+  ],
+  "enrollment_over_time": [
+    { "month": "2025-01", "enrolled": 1200 },
+    { "month": "2025-04", "enrolled": 1550 },
+    { "month": "2025-07", "enrolled": 1920 },
+    { "month": "2025-10", "enrolled": 2180 },
+    { "month": "2026-01", "enrolled": 2410 }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "title": "NSCLC Phase 3 Pipeline Comparison",
+  "query": "NSCLC phase 3",
+  "trials": [
+    { "nct_id": "NCT1001", "acronym": "TRIAL-01", "sponsor": "Sponsor A", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-01-01", "primary_completion_date": "2026-01-01" },
+    { "nct_id": "NCT1002", "acronym": "TRIAL-02", "sponsor": "Sponsor A", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-02-01", "primary_completion_date": "2026-02-01" },
+    { "nct_id": "NCT1003", "acronym": "TRIAL-03", "sponsor": "Sponsor B", "status": "Active, not recruiting", "phase": "Phase 3", "start_date": "2023-03-01", "primary_completion_date": "2026-03-01" },
+    { "nct_id": "NCT1004", "acronym": "TRIAL-04", "sponsor": "Sponsor B", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-04-01", "primary_completion_date": "2026-04-01" },
+    { "nct_id": "NCT1005", "acronym": "TRIAL-05", "sponsor": "Sponsor C", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-05-01", "primary_completion_date": "2026-05-01" },
+    { "nct_id": "NCT1006", "acronym": "TRIAL-06", "sponsor": "Sponsor C", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-06-01", "primary_completion_date": "2026-06-01" },
+    { "nct_id": "NCT1007", "acronym": "TRIAL-07", "sponsor": "Sponsor D", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-07-01", "primary_completion_date": "2026-07-01" },
+    { "nct_id": "NCT1008", "acronym": "TRIAL-08", "sponsor": "Sponsor D", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-08-01", "primary_completion_date": "2026-08-01" },
+    { "nct_id": "NCT1009", "acronym": "TRIAL-09", "sponsor": "Sponsor E", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-09-01", "primary_completion_date": "2026-09-01" },
+    { "nct_id": "NCT1010", "acronym": "TRIAL-10", "sponsor": "Sponsor E", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-10-01", "primary_completion_date": "2026-10-01" },
+    { "nct_id": "NCT1011", "acronym": "TRIAL-11", "sponsor": "Sponsor F", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-11-01", "primary_completion_date": "2026-11-01" },
+    { "nct_id": "NCT1012", "acronym": "TRIAL-12", "sponsor": "Sponsor F", "status": "Recruiting", "phase": "Phase 3", "start_date": "2023-12-01", "primary_completion_date": "2026-12-01" },
+    { "nct_id": "NCT1013", "acronym": "TRIAL-13", "sponsor": "Sponsor G", "status": "Recruiting", "phase": "Phase 3", "start_date": "2024-01-01", "primary_completion_date": "2027-01-01" },
+    { "nct_id": "NCT1014", "acronym": "TRIAL-14", "sponsor": "Sponsor G", "status": "Recruiting", "phase": "Phase 3", "start_date": "2024-02-01", "primary_completion_date": "2027-02-01" },
+    { "nct_id": "NCT1015", "acronym": "TRIAL-15", "sponsor": "Sponsor H", "status": "Recruiting", "phase": "Phase 3", "start_date": "2024-03-01", "primary_completion_date": "2027-03-01" },
+    { "nct_id": "NCT1016", "acronym": "TRIAL-16", "sponsor": "Sponsor H", "status": "Recruiting", "phase": "Phase 3", "start_date": "2024-04-01", "primary_completion_date": "2027-04-01" },
+    { "nct_id": "NCT1017", "acronym": "TRIAL-17", "sponsor": "Sponsor I", "status": "Recruiting", "phase": "Phase 3", "start_date": "2024-05-01", "primary_completion_date": "2027-05-01" },
+    { "nct_id": "NCT1018", "acronym": "TRIAL-18", "sponsor": "Sponsor I", "status": "Recruiting", "phase": "Phase 3", "start_date": "2024-06-01", "primary_completion_date": "2027-06-01" }
+  ]
+}
