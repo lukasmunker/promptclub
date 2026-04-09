@@ -9,6 +9,7 @@ from mcp.server.fastmcp import FastMCP
 
 from app.services.orchestration import Orchestrator
 from app.settings import settings
+from app.utils import lean_dump
 
 
 orchestrator = Orchestrator()
@@ -49,7 +50,7 @@ async def search_trials(
     phase: str | None = None,
     sponsor: str | None = None,
     status: str | None = None,
-    page_size: int = 10,
+    page_size: int = 5,
 ) -> dict[str, Any]:
     """
     Search ClinicalTrials.gov for oncology trials and enrich results with linked PubMed publications.
@@ -59,7 +60,7 @@ async def search_trials(
       - phase: "1", "2", "3", "phase 3", "PHASE2" (all formats accepted)
       - sponsor: partial sponsor name, e.g. "[Company]", "Merck"
       - status: "recruiting", "completed", "active", "not_yet_recruiting", etc.
-      - page_size: number of results (default 10, max ~100)
+      - page_size: number of results (default 5, max ~100)
 
     Medical abbreviations (NSCLC, HCC, TNBC) and trade names (Keytruda→pembrolizumab) are
     automatically expanded. Returns full trial records with linked PMIDs and citations.
@@ -71,7 +72,7 @@ async def search_trials(
         status=status,
         page_size=page_size,
     )
-    return result.model_dump()
+    return lean_dump(result)
 
 
 @mcp.tool()
@@ -86,7 +87,7 @@ async def get_trial_details(nct_id: str) -> dict[str, Any]:
     record = await orchestrator.get_trial_details(nct_id)
     if not record:
         return {"found": False, "nct_id": nct_id}
-    return {"found": True, "trial": record.model_dump()}
+    return {"found": True, "trial": lean_dump(record)}
 
 
 @mcp.tool()
@@ -100,7 +101,7 @@ async def search_publications(query: str, page_size: int = 10) -> dict[str, Any]
     Returns title, abstract, authors, journal, pub date, and linked trial IDs (NCT numbers).
     """
     pubs = await orchestrator.search_publications(query=query, page_size=page_size)
-    return {"count": len(pubs), "results": [p.model_dump() for p in pubs]}
+    return {"count": len(pubs), "results": [lean_dump(p) for p in pubs]}
 
 
 @mcp.tool()
@@ -114,7 +115,7 @@ async def get_target_context(disease_id: str) -> dict[str, Any]:
     Returns ranked targets with association scores from genetics, literature, and pathway data.
     """
     rows = await orchestrator.get_target_context(disease_id=disease_id)
-    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+    return {"count": len(rows), "results": [lean_dump(r) for r in rows]}
 
 
 @mcp.tool()
@@ -128,7 +129,7 @@ async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
     active ingredients, application numbers, and manufacturer.
     """
     rows = await orchestrator.get_regulatory_context(drug_name=drug_name)
-    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+    return {"count": len(rows), "results": [lean_dump(r) for r in rows]}
 
 
 @mcp.tool()
@@ -142,7 +143,7 @@ async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
     get_target_context if you only have a free-text disease name.
     """
     rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
-    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+    return {"count": len(rows), "results": [lean_dump(r) for r in rows]}
 
 
 @mcp.tool()
@@ -156,7 +157,7 @@ async def web_context_search(query: str) -> dict[str, Any]:
     (returns empty gracefully if unavailable). Always cite the web sources returned.
     """
     rows = await orchestrator.web_context(query=query)
-    return {"count": len(rows), "results": [r.model_dump() for r in rows]}
+    return {"count": len(rows), "results": [lean_dump(r) for r in rows]}
 
 
 @mcp.tool()
@@ -168,7 +169,7 @@ async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
     or reports that a data source seems down. Returns latency, status, and sample IDs for each source.
     """
     results = await orchestrator.test_sources(sample_query=sample_query)
-    return {"results": [r.model_dump() for r in results]}
+    return {"results": [lean_dump(r) for r in results]}
 
 
 @mcp.tool()
@@ -288,7 +289,7 @@ async def health():
 @app.get("/health/sources")
 async def health_sources():
     results = await orchestrator.test_sources(sample_query="melanoma")
-    return {"results": [r.model_dump() for r in results]}
+    return {"results": [lean_dump(r) for r in results]}
 
 
 app.mount("/", _mcp_asgi)

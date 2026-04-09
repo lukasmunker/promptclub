@@ -8,6 +8,7 @@ from app.adapters.opentargets import OpenTargetsAdapter
 from app.adapters.pubmed import PubMedAdapter
 from app.adapters.vertex_google_search import VertexGoogleSearchAdapter
 from app.models import ComparisonResponse, Citation
+from app.utils import lean_dump
 
 
 class Orchestrator:
@@ -125,7 +126,7 @@ class Orchestrator:
                 trials.append(result)
         return {
             "count": len(trials),
-            "trials": [t.model_dump() for t in trials],
+            "trials": [lean_dump(t) for t in trials],
             "errors": errors,
         }
 
@@ -147,7 +148,7 @@ class Orchestrator:
             "pubmed_publications_3yr": pub_count if not isinstance(pub_count, Exception) else 0,
             "fda_label_records": fda_count if not isinstance(fda_count, Exception) else 0,
             "disease_ontology": (
-                [d.model_dump() for d in diseases]
+                [lean_dump(d) for d in diseases]
                 if not isinstance(diseases, Exception)
                 else []
             ),
