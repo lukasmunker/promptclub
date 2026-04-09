@@ -23,6 +23,7 @@ from app.viz.contract import ArtifactMeta, UiPayload
 from app.viz.theme import (
     BADGE_NCT,
     BADGE_PMID,
+    CARD_WRAPPER,
     HEADER_BORDER,
     PILL_PHASE,
     PILL_STATUS,
@@ -65,7 +66,7 @@ def build(
     )
 
     raw = (
-        '<div class="p-4 font-sans text-gray-900 space-y-4">\n'
+        f'<div class="{CARD_WRAPPER} space-y-4">\n'
         f"  {header_html}\n"
         f"  {body_html}\n"
         "</div>"

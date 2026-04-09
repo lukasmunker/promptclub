@@ -12,7 +12,7 @@ from collections import defaultdict
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
-from app.viz.theme import BADGE_MUTED, BADGE_NCT, PILL_PHASE
+from app.viz.theme import BADGE_MUTED, BADGE_NCT, CARD_WRAPPER, PILL_PHASE
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
@@ -35,8 +35,10 @@ def build(
     )
 
     raw = (
-        f'<div class="space-y-6 p-4 font-sans text-gray-900">\n'
+        f'<div class="{CARD_WRAPPER}">\n'
+        f'<div class="space-y-6">\n'
         f"{section_html}\n"
+        f"</div>\n"
         f"</div>"
     )
 

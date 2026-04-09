@@ -31,6 +31,8 @@ from app.viz.theme import (
     BADGE_TARGET,
     BAR_FILL_PRIMARY,
     BAR_TRACK,
+    CARD_WRAPPER,
+    HEADER_BORDER,
     LINK_SUBTLE,
 )
 from app.viz.utils.html import assert_safe_html, escape_html
@@ -64,8 +66,8 @@ def build(
         f"https://platform.opentargets.org/disease/{escape_html(disease_id)}"
     )
 
-    raw = f"""<div class="p-4 font-sans text-gray-900">
-  <header class="mb-3 flex items-baseline justify-between border-b border-teal-100 pb-2">
+    raw = f"""<div class="{CARD_WRAPPER}">
+  <header class="mb-3 flex items-baseline justify-between {HEADER_BORDER} pb-2">
     <div>
       <h2 class="text-base font-semibold">{escape_html(title)}</h2>
       <p class="text-xs text-gray-500">Source: Open Targets · Disease ID <span class="font-mono">{escape_html(disease_id)}</span></p>

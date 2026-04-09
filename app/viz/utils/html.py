@@ -64,19 +64,19 @@ def assert_safe_html(body: str) -> None:
             )
 
 
-# Default donut palette — teal gradient matching app/viz/theme.DONUT_PALETTE
-# (re-declared here to avoid a circular import; keep in sync when the theme
-# changes). Five teal shades from darkest to lightest, then a rose accent,
-# then two diagram-sampled custom values. Wraps after 8 slices.
+# Default donut palette — BioNtech brand colors (matching app/viz/theme
+# .DONUT_PALETTE). Re-declared here to avoid a circular import back into
+# app.viz.theme; keep in sync when the brand palette changes. Order puts
+# distinguishable shades first so the common 2-5 slice pies read clearly.
 _DONUT_COLORS = (
-    "#134e4a",  # teal-900 — darkest
-    "#0f766e",  # teal-700
-    "#14b8a6",  # teal-500
-    "#5eead4",  # teal-300
-    "#ccfbf1",  # teal-100 — lightest
-    "#e11d48",  # rose-600 — accent
-    "#1b5f55",  # custom dark teal from the Pharmafuse diagram
-    "#a5e5d9",  # custom mint from the Pharmafuse diagram
+    "#064d36",  # darkest green
+    "#179E75",  # primary BioNtech green
+    "#0d7a5a",  # deep green
+    "#6fa312",  # dark lime
+    "#99D11E",  # secondary BioNtech lime
+    "#d1eb6e",  # light lime
+    "#e11d48",  # rose accent
+    "#a5e5d9",  # mint fallback
 )
 
 
