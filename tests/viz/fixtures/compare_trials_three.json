@@ -1,0 +1,36 @@
+{
+  "title": "Phase 3 Melanoma Trial Comparison",
+  "query": "melanoma phase 3",
+  "trials": [
+    {
+      "nct_id": "NCT01234567",
+      "acronym": "KEYNOTE-054",
+      "title": "Pembrolizumab vs Placebo in Advanced Melanoma",
+      "sponsor": "Sponsor A",
+      "status": "Recruiting",
+      "phase": "Phase 3",
+      "start_date": "2023-05-01",
+      "primary_completion_date": "2026-12-01"
+    },
+    {
+      "nct_id": "NCT02345678",
+      "acronym": "CheckMate-915",
+      "title": "Nivolumab + Ipilimumab in BRAF-Mutated Melanoma",
+      "sponsor": "Sponsor B",
+      "status": "Active, not recruiting",
+      "phase": "Phase 3",
+      "start_date": "2024-01-15",
+      "primary_completion_date": "2027-06-30"
+    },
+    {
+      "nct_id": "NCT03456789",
+      "acronym": "TIL-MEL-3",
+      "title": "Adjuvant TIL for Stage III Melanoma",
+      "sponsor": "Sponsor C",
+      "status": "Recruiting",
+      "phase": "Phase 3",
+      "start_date": "2024-09-01",
+      "primary_completion_date": "2028-03-01"
+    }
+  ]
+}
