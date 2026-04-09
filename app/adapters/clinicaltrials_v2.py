@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -10,10 +11,47 @@ from app.settings import settings
 from app.utils import (
     compact_whitespace,
     dig,
-    matches_any_text,
+    normalize_condition,
     split_inclusion_exclusion,
     unique_preserve_order,
 )
+
+# Valid filter.overallStatus values accepted by ClinicalTrials.gov v2
+_STATUS_MAP: dict[str, str] = {
+    "recruiting": "RECRUITING",
+    "active": "ACTIVE_NOT_RECRUITING",
+    "active_not_recruiting": "ACTIVE_NOT_RECRUITING",
+    "completed": "COMPLETED",
+    "not_yet_recruiting": "NOT_YET_RECRUITING",
+    "not yet recruiting": "NOT_YET_RECRUITING",
+    "terminated": "TERMINATED",
+    "withdrawn": "WITHDRAWN",
+    "suspended": "SUSPENDED",
+    "enrolling_by_invitation": "ENROLLING_BY_INVITATION",
+}
+
+
+def _normalize_phase_term(phase: str) -> str:
+    """Convert various phase inputs to ClinicalTrials query.term format (e.g. PHASE3)."""
+    p = phase.strip().upper().replace(" ", "").replace("-", "")
+    if p.startswith("PHASE"):
+        return p
+    if p.isdigit():
+        return f"PHASE{p}"
+    return p
+
+
+def _normalize_status(status: str) -> str:
+    return _STATUS_MAP.get(status.lower().strip(), status.upper())
+
+
+def _strip_adverse_events(study: dict) -> dict:
+    """Remove adverseEventsModule (~28k tokens) before storing in raw field."""
+    results = study.get("resultsSection")
+    if results and "adverseEventsModule" in results:
+        cleaned = {k: v for k, v in results.items() if k != "adverseEventsModule"}
+        return {**study, "resultsSection": cleaned}
+    return study
 
 
 class ClinicalTrialsV2Adapter:
@@ -35,11 +73,25 @@ class ClinicalTrialsV2Adapter:
         sponsor: str | None = None,
         status: str | None = None,
     ) -> list[TrialRecord]:
+        condition = normalize_condition(disease_query)
+
         params: dict[str, str | int] = {
+            "query.cond": condition,
             "pageSize": page_size,
-            "query.cond": disease_query,
-            "query.term": disease_query,
+            "format": "json",
         }
+
+        # Phase filter: use query.term which accepts PHASE1/PHASE2/PHASE3
+        if phase:
+            params["query.term"] = _normalize_phase_term(phase)
+
+        # Sponsor filter: dedicated query.spons parameter
+        if sponsor:
+            params["query.spons"] = sponsor
+
+        # Status filter: API-level filter (much more efficient than post-filter)
+        if status:
+            params["filter.overallStatus"] = _normalize_status(status)
 
         async with httpx.AsyncClient(timeout=self.timeout, headers=self.headers) as client:
             resp = await client.get(self.BASE_URL, params=params)
@@ -47,16 +99,35 @@ class ClinicalTrialsV2Adapter:
             payload = resp.json()
 
         studies = payload.get("studies", [])
-        rows = [self.normalize_study(study) for study in studies]
+        return [self.normalize_study(study) for study in studies]
 
+    async def count_trials(
+        self,
+        condition: str,
+        phase: str | None = None,
+        status: str | None = None,
+    ) -> int:
+        """Return total trial count for a condition without fetching records."""
+        normalized = normalize_condition(condition)
+        params: dict[str, str | int] = {
+            "query.cond": normalized,
+            "countTotal": "true",
+            "pageSize": 1,
+            "format": "json",
+        }
         if phase:
-            rows = [r for r in rows if matches_any_text(r.phase, phase)]
-        if sponsor:
-            rows = [r for r in rows if sponsor.lower() in (r.sponsor or "").lower()]
+            params["query.term"] = _normalize_phase_term(phase)
         if status:
-            rows = [r for r in rows if status.lower() in (r.status or "").lower()]
+            params["filter.overallStatus"] = _normalize_status(status)
 
-        return rows
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout, headers=self.headers) as client:
+                resp = await client.get(self.BASE_URL, params=params)
+                if resp.status_code == 200:
+                    return resp.json().get("totalCount", 0)
+        except Exception:
+            pass
+        return 0
 
     async def get_trial(self, nct_id: str) -> TrialRecord | None:
         url = f"{self.BASE_URL}/{nct_id}"
@@ -79,6 +150,7 @@ class ClinicalTrialsV2Adapter:
         contacts_module = dig(study, ["protocolSection", "contactsLocationsModule"], {})
         eligibility_module = dig(study, ["protocolSection", "eligibilityModule"], {})
         outcomes_module = dig(study, ["protocolSection", "outcomesModule"], {})
+        references_module = dig(study, ["protocolSection", "referencesModule"], {})
 
         nct_id = identification.get("nctId")
         brief_title = identification.get("briefTitle")
@@ -110,6 +182,13 @@ class ClinicalTrialsV2Adapter:
         criteria = compact_whitespace(eligibility_module.get("eligibilityCriteria"))
         inclusion, exclusion = split_inclusion_exclusion(criteria)
 
+        # Extract PMIDs from referencesModule for NCT→Publication cross-referencing
+        linked_pmids = unique_preserve_order([
+            ref["pmid"]
+            for ref in (references_module.get("references", []) or [])
+            if ref.get("pmid")
+        ])
+
         return TrialRecord(
             source="ClinicalTrials.gov",
             source_id=nct_id or brief_title or "unknown",
@@ -135,6 +214,8 @@ class ClinicalTrialsV2Adapter:
             start_date=dig(status_module, ["startDateStruct", "date"]),
             completion_date=dig(status_module, ["completionDateStruct", "date"]),
             keywords=keywords,
+            linked_pmids=linked_pmids,
+            retrieved_at=datetime.now(timezone.utc).isoformat(),
             citations=[
                 Citation(
                     source="ClinicalTrials.gov",
@@ -143,7 +224,7 @@ class ClinicalTrialsV2Adapter:
                     title=brief_title,
                 )
             ],
-            raw=study,
+            raw=_strip_adverse_events(study),
         )
 
     async def healthcheck(self, sample_query: str = "melanoma") -> SourceTestResult:

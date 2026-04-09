@@ -67,6 +67,19 @@ class OpenFDAAdapter:
 
         return output
 
+    async def count_approved(self, condition: str) -> int:
+        """Return total number of FDA label records mentioning a condition."""
+        search = quote_plus(f"indications_and_usage:{condition}")
+        url = f"{self.BASE_URL}?search={search}&limit=1"
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout, headers=self.headers) as client:
+                resp = await client.get(url)
+                if resp.status_code == 200:
+                    return resp.json().get("meta", {}).get("results", {}).get("total", 0)
+        except Exception:
+            pass
+        return 0
+
     async def healthcheck(self, sample_query: str = "Keytruda") -> SourceTestResult:
         started = time.perf_counter()
         try:
