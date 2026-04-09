@@ -225,11 +225,12 @@ def test_trial_details_rich_produces_tab_view():
         promptclub_data={"found": True, "trial": trial.model_dump()},
     )
     assert env["ui"]["recipe"] == "trial_detail_tabs"
-    assert env["ui"]["artifact"]["type"] == "application/vnd.react"
-    # Should include /components/ui/tabs and /components/ui/table
-    import_sources = {imp["from"] for imp in env["ui"]["components"]}
-    assert "/components/ui/tabs" in import_sources
-    assert "/components/ui/table" in import_sources
+    # Migrated to inline markdown to avoid LibreChat Sandpack 2.19.8 crash
+    assert env["ui"]["artifact"]["type"] == "text/markdown"
+    assert "raw" in env["ui"]
+    # Section headers from the rich data are present
+    raw = env["ui"]["raw"]
+    assert "### Arms & Interventions" in raw or "### Overview" in raw
 
 
 # --- search_publications adapter --------------------------------------------

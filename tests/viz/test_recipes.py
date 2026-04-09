@@ -236,40 +236,55 @@ def test_safe_label_utility_direct():
     assert safe_label("a" * 100, max_length=20).endswith("…")
 
 
-# --- indication_dashboard (React) ------------------------------------------
+# --- indication_dashboard (Markdown, inline — migrated from React) --------
 
 
 def test_indication_dashboard_basic(indication_landscape_nsclc):
     payload = indication_dashboard.build(indication_landscape_nsclc)
-    assert payload.artifact.type == "application/vnd.react"
+    assert payload.artifact.type == "text/markdown"
     assert payload.recipe == "indication_dashboard"
-    assert payload.raw is None
-    assert payload.blueprint is not None
-    assert payload.components is not None
+    assert payload.raw is not None
+    assert payload.blueprint is None
+    assert payload.components is None
+    # Main heading present
+    assert payload.raw.startswith("## ")
 
 
-def test_indication_dashboard_imports_are_valid(indication_landscape_nsclc):
+def test_indication_dashboard_renders_phase_pie(indication_landscape_nsclc):
     payload = indication_dashboard.build(indication_landscape_nsclc)
-    allowed_sources = {"/components/ui/card", "/components/ui/badge", "recharts", "lucide-react"}
-    for imp in payload.components:
-        # Each import source must start with an allowed prefix
-        assert any(
-            imp.from_ == src or imp.from_.startswith(src) for src in allowed_sources
-        ), f"Unexpected import source: {imp.from_}"
+    # Mermaid pie chart for phase distribution
+    assert "### Phase Distribution" in payload.raw
+    assert "```mermaid" in payload.raw
+    assert "pie title Phase Distribution" in payload.raw
+    # Phase labels from the NSCLC fixture
+    assert '"Phase 1" : 42' in payload.raw
 
 
-def test_indication_dashboard_panels_match_data(indication_landscape_nsclc):
+def test_indication_dashboard_renders_status_pie(indication_landscape_nsclc):
     payload = indication_dashboard.build(indication_landscape_nsclc)
-    # Root is a `p-4` wrapper div; first child is the grid, remaining children
-    # (if any) are the citation footer paragraph.
-    root = payload.blueprint[0]
-    assert root.component == "div"
-    assert root.children is not None and len(root.children) >= 1
-    grid = root.children[0]
-    assert grid.component == "div"
-    # 4 sections in fixture → 4 Card panels
-    assert grid.children is not None
-    assert len(grid.children) == 4
+    assert "### Status Breakdown" in payload.raw
+    # At least one status label from the fixture
+    assert '"Recruiting"' in payload.raw
+
+
+def test_indication_dashboard_renders_top_sponsors_table(
+    indication_landscape_nsclc,
+):
+    payload = indication_dashboard.build(indication_landscape_nsclc)
+    assert "### Top Sponsors" in payload.raw
+    assert "| Rank | Sponsor | Trials | Share |" in payload.raw
+    # ASCII bars
+    assert "█" in payload.raw
+
+
+def test_indication_dashboard_renders_enrollment_table(
+    indication_landscape_nsclc,
+):
+    payload = indication_dashboard.build(indication_landscape_nsclc)
+    assert "### Enrollment Pace" in payload.raw
+    assert "| Period | Enrolled | Δ vs previous |" in payload.raw
+    # Trend arrows for delta column
+    assert "📈" in payload.raw or "📉" in payload.raw or "➡️" in payload.raw
 
 
 def test_indication_dashboard_caps_sponsors_at_20():
@@ -279,17 +294,14 @@ def test_indication_dashboard_caps_sponsors_at_20():
         "top_sponsors": [{"name": f"S{i}", "trials": 100 - i} for i in range(30)],
     }
     payload = indication_dashboard.build(data)
-    # The builder caps the list; verify via re-reading it from blueprint is
-    # complex, so check the capped list surfaces somewhere reasonable: the
-    # build() returns a payload whose blueprint binds to "top_sponsors", and
-    # the data passed in is mutated to the capped version.
-    # We can't see the mutated data from the payload, so assert via count
-    # through a public helper instead.
+    # The sponsor capping helper is still a public-ish symbol
     from app.viz.recipes.indication_dashboard import _cap_sponsors
 
     capped = _cap_sponsors(data["top_sponsors"])
     assert len(capped) == 21  # 20 + "Other"
     assert capped[-1]["name"] == "Other"
+    # And the rendered table mentions "Other" explicitly
+    assert "Other" in payload.raw
 
 
 def test_indication_dashboard_skips_missing_panels():
@@ -299,11 +311,12 @@ def test_indication_dashboard_skips_missing_panels():
         "phase_distribution": [{"phase": "1", "count": 1}, {"phase": "2", "count": 2}],
     }
     payload = indication_dashboard.build(data)
-    root = payload.blueprint[0]
-    # root is the p-4 wrapper; first child is the grid
-    grid = root.children[0]
-    # Only 1 panel (phase)
-    assert len(grid.children) == 1
+    # Phase pie is rendered (2 non-zero phases)
+    assert "### Phase Distribution" in payload.raw
+    # Status / sponsors / enrollment sections are absent
+    assert "### Status Breakdown" not in payload.raw
+    assert "### Top Sponsors" not in payload.raw
+    assert "### Enrollment Pace" not in payload.raw
 
 
 # --- trial_detail_tabs (React) ---------------------------------------------
@@ -311,55 +324,51 @@ def test_indication_dashboard_skips_missing_panels():
 
 def test_trial_detail_tabs_basic(trial_details_nct01):
     payload = trial_detail_tabs.build(trial_details_nct01)
-    assert payload.artifact.type == "application/vnd.react"
+    assert payload.artifact.type == "text/markdown"
     assert payload.recipe == "trial_detail_tabs"
-    assert payload.blueprint is not None
+    assert payload.raw is not None
+    assert payload.blueprint is None
+    assert payload.components is None
+    # Header with NCT link and main heading
+    assert payload.raw.startswith("## ")
+    assert "clinicaltrials.gov/study/NCT01234567" in payload.raw
 
 
-def test_trial_detail_tabs_imports_shadcn_from_correct_paths(trial_details_nct01):
-    payload = trial_detail_tabs.build(trial_details_nct01)
-    import_sources = {imp.from_ for imp in payload.components}
-    # Must include the exact shadcn paths LibreChat expects
-    assert "/components/ui/tabs" in import_sources
-    assert "/components/ui/table" in import_sources
-    assert "/components/ui/card" in import_sources
-    # Must NOT use scoped paths
-    for src in import_sources:
-        assert not src.startswith("@/"), f"Forbidden scoped import: {src}"
-
-
-def test_trial_detail_tabs_includes_all_six_tabs_when_data_present(
+def test_trial_detail_tabs_renders_all_sections_when_data_present(
     trial_details_nct01,
 ):
     payload = trial_detail_tabs.build(trial_details_nct01)
-    # Find the Tabs root, count TabsTriggers
-    root = payload.blueprint[0]
-    tabs = root.children[1]  # children: [header_card, tabs]
-    assert tabs.component == "Tabs"
-    tabs_list = tabs.children[0]
-    triggers = [c for c in tabs_list.children if c.component == "TabsTrigger"]
-    # Fixture has overview, design, eligibility, arms, sites, publications → 6 tabs
-    assert len(triggers) == 6
+    # All 6 section headers present when the fixture has rich data
+    assert "### Overview" in payload.raw
+    assert "### Design & Endpoints" in payload.raw
+    assert "### Eligibility" in payload.raw
+    assert "### Arms & Interventions" in payload.raw
+    assert "### Sites" in payload.raw
+    assert "### Linked Publications" in payload.raw
 
 
-def test_trial_detail_tabs_omits_tabs_for_missing_data():
+def test_trial_detail_tabs_omits_sections_for_missing_data():
     minimal = {
         "nct_id": "NCT99",
         "title": "Minimal",
-        "arms": [{"label": "Arm A"}],
+        "arms": [{"label": "Arm A", "type": "Experimental", "interventions": ["X"]}],
         # No design, eligibility, sites, publications
     }
     payload = trial_detail_tabs.build(minimal)
-    root = payload.blueprint[0]
-    tabs = root.children[1]
-    tabs_list = tabs.children[0]
-    triggers = [c for c in tabs_list.children if c.component == "TabsTrigger"]
-    # Only overview + arms
-    trigger_values = {c.props["value"] for c in triggers}
-    assert "overview" in trigger_values
-    assert "arms" in trigger_values
-    assert "design" not in trigger_values
-    assert "sites" not in trigger_values
+    # Arms section present
+    assert "### Arms & Interventions" in payload.raw
+    # Missing sections are absent
+    assert "### Design & Endpoints" not in payload.raw
+    assert "### Eligibility" not in payload.raw
+    assert "### Sites" not in payload.raw
+    assert "### Linked Publications" not in payload.raw
+
+
+def test_trial_detail_tabs_uses_emoji_badges_in_header(trial_details_nct01):
+    payload = trial_detail_tabs.build(trial_details_nct01)
+    # Phase and status badges decorated with emoji in the header line
+    assert "💊 Phase 3" in payload.raw
+    assert "🟢 Recruiting" in payload.raw
 
 
 # --- End-to-end build_response ---------------------------------------------
@@ -387,17 +396,18 @@ def test_build_response_search_with_sources(
     assert envelope["sources"][0]["kind"] == "clinicaltrials.gov"
 
 
-def test_build_response_react_uses_aliases(indication_landscape_nsclc):
+def test_build_response_indication_dashboard_is_markdown(indication_landscape_nsclc):
+    """Both remaining React recipes were migrated to inline markdown after
+    LibreChat Sandpack 2.19.8 crashed on them. Verify the envelope shape."""
     envelope = build_response(
         "get_indication_landscape", indication_landscape_nsclc, sources=[]
     )
-    assert envelope["ui"]["artifact"]["type"] == "application/vnd.react"
-    # Aliases: `from` not `from_`, `import` not `imports`
-    first_import = envelope["ui"]["components"][0]
-    assert "from" in first_import
-    assert "import" in first_import
-    assert "from_" not in first_import
-    assert "imports" not in first_import
+    assert envelope["ui"]["artifact"]["type"] == "text/markdown"
+    assert envelope["ui"]["recipe"] == "indication_dashboard"
+    assert "raw" in envelope["ui"]
+    # No React-only fields
+    assert "components" not in envelope["ui"]
+    assert "blueprint" not in envelope["ui"]
 
 
 def test_build_response_skip_has_no_ui(search_empty):
@@ -457,9 +467,11 @@ def test_build_response_trial_details_rich(trial_details_nct01):
         "get_trial_details", trial_details_nct01, sources=[]
     )
     assert envelope["ui"]["recipe"] == "trial_detail_tabs"
-    assert envelope["ui"]["artifact"]["type"] == "application/vnd.react"
-    assert "blueprint" in envelope["ui"]
-    assert "components" in envelope["ui"]
+    assert envelope["ui"]["artifact"]["type"] == "text/markdown"
+    assert "raw" in envelope["ui"]
+    # No React-only fields after migration
+    assert "components" not in envelope["ui"]
+    assert "blueprint" not in envelope["ui"]
 
 
 # --- whitespace_card (Markdown, inline) -------------------------------------
@@ -641,7 +653,10 @@ def test_trial_timeline_gantt_embeds_source_footer(compare_trials_three):
     assert source_idx > closing_fence_idx
 
 
-def test_trial_detail_tabs_embeds_source_footer_blueprint(trial_details_nct01):
+def test_trial_detail_tabs_embeds_source_footer_markdown(trial_details_nct01):
+    """After migration from React to inline markdown, the source footer
+    appears as a _Source:_ line at the end of ui.raw, not as a BlueprintNode.
+    """
     payload = trial_detail_tabs.build(
         trial_details_nct01,
         sources=[
@@ -653,29 +668,22 @@ def test_trial_detail_tabs_embeds_source_footer_blueprint(trial_details_nct01):
             )
         ],
     )
-    # The root div's last child should be a <p> with the source text
-    root = payload.blueprint[0]
-    assert root.children is not None
-    last_child = root.children[-1]
-    assert last_child.component == "p"
-    assert last_child.text is not None
-    assert "Source:" in last_child.text
-    assert "ClinicalTrials.gov" in last_child.text
+    assert payload.artifact.type == "text/markdown"
+    assert "_Source:" in payload.raw
+    assert "[ClinicalTrials.gov]" in payload.raw
 
 
-def test_indication_dashboard_embeds_source_footer_blueprint(indication_landscape_nsclc):
+def test_indication_dashboard_embeds_source_footer_markdown(
+    indication_landscape_nsclc,
+):
+    """Same migration as trial_detail_tabs — footer is now inline markdown."""
     payload = indication_dashboard.build(
         indication_landscape_nsclc,
         sources=_SAMPLE_SOURCES,
     )
-    # Root wrapper's children = [grid, footer <p>]
-    root = payload.blueprint[0]
-    assert root.children is not None
-    assert len(root.children) == 2  # grid + footer paragraph
-    footer = root.children[1]
-    assert footer.component == "p"
-    assert "Source:" in footer.text
-    assert "ClinicalTrials.gov" in footer.text
+    assert payload.artifact.type == "text/markdown"
+    assert "_Source:" in payload.raw
+    assert "[ClinicalTrials.gov]" in payload.raw
 
 
 # --- Emoji decoration + Mermaid pie / bar upgrades --------------------------

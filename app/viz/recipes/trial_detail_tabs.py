@@ -1,40 +1,34 @@
-"""React recipe: single-trial deep dive with shadcn Tabs + Table.
+"""Inline Markdown recipe: single-trial deep dive with section headers.
 
-Renders as an ``application/vnd.react`` artifact. Requires LibreChat's
-``SHADCNUI`` mode (toggle "Anweisungen für shadcn/ui-Komponenten einschließen")
-because ``Tabs`` and ``Table`` are not in ``essentialShadcnComponents``.
+Formerly rendered as a React + shadcn Tabs artifact, but LibreChat's Sandpack
+runtime (2.19.8) crashes with "Attempted to assign to readonly property" on
+React-Tabs-based artifacts. We migrated to inline markdown with ``###``
+section headers instead — no Sandpack, no crash, renders directly in the chat
+bubble like the other 5 inline recipes.
 
-Six tabs:
-  1. Overview — Card with phase, status, sponsor, enrollment, dates
-  2. Design & Endpoints — primary/secondary outcome measures
-  3. Eligibility — inclusion/exclusion criteria
-  4. Arms — arms & interventions as a Table
-  5. Sites — study locations as a Table
-  6. Publications — linked PubMed publications as a Table
+The recipe name is kept as ``trial_detail_tabs`` for backward compatibility
+with decision.py, adapters.py, and the envelope contract, even though the
+output now uses section headers rather than literal tabs.
 
-Tabs without data are omitted gracefully (rather than showing empty tabs).
+Sections (only rendered when the corresponding data is present):
+  1. Overview — trial title, status, sponsor, phase, enrollment, dates
+  2. Design & Endpoints — primary / secondary outcome measures
+  3. Eligibility — inclusion / exclusion criteria, age, gender
+  4. Arms & Interventions — study arms and their interventions
+  5. Sites — study locations table
+  6. Publications — linked PubMed papers
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from app.viz.contract import ArtifactMeta, BlueprintNode, ComponentImport, UiPayload
+from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.utils.citations import format_source_footer
+from app.viz.utils.emoji import format_phase, format_status
 from app.viz.utils.identifiers import make_identifier
 
-from app.viz.utils.citations import format_source_footer_text
-
 __all__ = ["build"]
-
-# Tab configuration: (tab_value, label, data_key_check)
-_TABS = [
-    ("overview", "Overview", None),  # Always shown
-    ("design", "Design & Endpoints", "primary_outcome_measures"),
-    ("eligibility", "Eligibility", "eligibility"),
-    ("arms", "Arms", "arms"),
-    ("sites", "Sites", "sites"),
-    ("publications", "Publications", "linked_publications"),
-]
 
 
 def build(
@@ -44,453 +38,303 @@ def build(
     nct_id = data.get("nct_id") or "trial"
     title_text = data.get("title") or nct_id
 
-    # Determine which tabs to render based on data availability
-    active_tabs = [
-        (value, label)
-        for value, label, check in _TABS
-        if check is None or data.get(check)
-    ]
+    # --- Header ------------------------------------------------------------
+    header_md = _render_header(title_text, nct_id, data)
 
-    # Fallback: if only overview is available, still render it
-    if not active_tabs:
-        active_tabs = [("overview", "Overview")]
+    # --- Optional sections (only rendered when data present) --------------
+    sections: list[str] = []
 
-    components = _components()
-    root = _build_root(title_text, nct_id, active_tabs, data)
+    overview_md = _render_overview(data)
+    if overview_md:
+        sections.append(overview_md)
 
-    # Append a small citation footer paragraph beneath the root container so
-    # the source attribution is always visible in the artifact pane.
-    footer_text = format_source_footer_text(sources)
-    if footer_text:
-        footer_node = BlueprintNode(
-            component="p",
-            props={
-                "className": "mt-4 text-xs text-gray-500 italic text-center"
-            },
-            text=footer_text,
-        )
-        # root is a `div` with className "space-y-4 p-4" containing [header, tabs]
-        # — append the footer as another child so it sits at the bottom.
-        if root.children is None:
-            root.children = []
-        root.children.append(footer_node)
+    design_md = _render_design(data)
+    if design_md:
+        sections.append(design_md)
 
-    blueprint = [root]
+    eligibility_md = _render_eligibility(data)
+    if eligibility_md:
+        sections.append(eligibility_md)
+
+    arms_md = _render_arms(data)
+    if arms_md:
+        sections.append(arms_md)
+
+    sites_md = _render_sites(data)
+    if sites_md:
+        sections.append(sites_md)
+
+    publications_md = _render_publications(data)
+    if publications_md:
+        sections.append(publications_md)
+
+    # If ALL optional sections are empty, emit a small placeholder so the
+    # reader knows the trial record was sparse rather than that the recipe
+    # glitched.
+    body_md = "\n\n".join(sections) if sections else (
+        "_No detailed design, eligibility, arms, sites, or publication "
+        "data available for this trial._"
+    )
+
+    source_footer = format_source_footer(sources)
+
+    raw = f"{header_md}\n\n{body_md}\n{source_footer}"
 
     return UiPayload(
         recipe="trial_detail_tabs",
         artifact=ArtifactMeta(
             identifier=make_identifier("trial_detail_tabs", nct_id),
-            type="application/vnd.react",
+            type="text/markdown",
             title=f"Trial {nct_id}",
         ),
-        components=components,
+        components=None,
         layout=None,
-        blueprint=blueprint,
-        raw=None,
+        blueprint=None,
+        raw=raw,
     )
 
 
-# --- Root layout ------------------------------------------------------------
+# --- Header -----------------------------------------------------------------
 
 
-def _build_root(
-    title: str,
-    nct_id: str,
-    active_tabs: list[tuple[str, str]],
-    data: dict[str, Any],
-) -> BlueprintNode:
-    # Header card — title, NCT badge, status, phase
-    header = BlueprintNode(
-        component="Card",
-        children=[
-            BlueprintNode(
-                component="CardHeader",
-                children=[
-                    BlueprintNode(
-                        component="div",
-                        props={"className": "flex items-start justify-between gap-3"},
-                        children=[
-                            BlueprintNode(component="CardTitle", text=title),
-                            BlueprintNode(
-                                component="Badge",
-                                props={"variant": "outline"},
-                                text=nct_id,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            BlueprintNode(
-                component="CardContent",
-                children=[
-                    BlueprintNode(
-                        component="div",
-                        props={"className": "flex flex-wrap gap-2"},
-                        children=_summary_badges(data),
-                    )
-                ],
-            ),
-        ],
+def _render_header(title: str, nct_id: str, data: dict[str, Any]) -> str:
+    """Top-of-card heading + a single-line metadata strip with badges."""
+    nct_link = (
+        f"[`{_md_escape_cell(nct_id)}`](https://clinicaltrials.gov/study/"
+        f"{_md_escape_url(nct_id)})"
     )
+    badges: list[str] = []
 
-    first_tab = active_tabs[0][0]
-    tabs = BlueprintNode(
-        component="Tabs",
-        props={"defaultValue": first_tab, "className": "w-full"},
-        children=[
-            BlueprintNode(
-                component="TabsList",
-                children=[
-                    BlueprintNode(
-                        component="TabsTrigger",
-                        props={"value": value},
-                        text=label,
-                    )
-                    for value, label in active_tabs
-                ],
-            ),
-            *[_tab_content(value, data) for value, _ in active_tabs],
-        ],
-    )
+    phase = data.get("phase")
+    if phase:
+        badges.append(format_phase(phase))
 
-    return BlueprintNode(
-        component="div",
-        props={"className": "space-y-4 p-4"},
-        children=[header, tabs],
+    status = data.get("status")
+    if status:
+        badges.append(format_status(status))
+
+    sponsor = data.get("sponsor")
+    if sponsor:
+        badges.append(f"**{_md_escape_cell(sponsor)}**")
+
+    enrollment = data.get("enrollment")
+    if enrollment is not None:
+        badges.append(f"n={enrollment}")
+
+    start = data.get("start_date")
+    end = data.get("primary_completion_date")
+    if start and end:
+        badges.append(f"{_md_escape_cell(start)} → {_md_escape_cell(end)}")
+    elif start:
+        badges.append(f"start {_md_escape_cell(start)}")
+
+    badge_line = " · ".join(badges) if badges else ""
+
+    return (
+        f"## {_md_escape(title)}\n\n"
+        f"{nct_link}{'  ·  ' + badge_line if badge_line else ''}"
     )
 
 
-def _summary_badges(data: dict[str, Any]) -> list[BlueprintNode]:
-    badges: list[BlueprintNode] = []
-    for key, label in (
-        ("phase", "Phase"),
-        ("status", "Status"),
-        ("sponsor", "Sponsor"),
-        ("enrollment", "Enrollment"),
-        ("start_date", "Start"),
-        ("primary_completion_date", "Primary completion"),
-    ):
-        value = data.get(key)
-        if value is None or value == "":
-            continue
-        badges.append(
-            BlueprintNode(
-                component="Badge",
-                props={"variant": "secondary"},
-                text=f"{label}: {value}",
-            )
-        )
-    return badges
+# --- Sections ---------------------------------------------------------------
 
 
-# --- Tab content builders ---------------------------------------------------
+def _render_overview(data: dict[str, Any]) -> str:
+    summary = data.get("brief_summary") or data.get("description")
+    if not summary:
+        return ""
+    return f"### Overview\n\n{_md_escape_paragraph(summary)}"
 
 
-def _tab_content(value: str, data: dict[str, Any]) -> BlueprintNode:
-    builders = {
-        "overview": _tab_overview,
-        "design": _tab_design,
-        "eligibility": _tab_eligibility,
-        "arms": _tab_arms,
-        "sites": _tab_sites,
-        "publications": _tab_publications,
-    }
-    inner = builders[value](data)
-    return BlueprintNode(
-        component="TabsContent",
-        props={"value": value, "className": "mt-4"},
-        children=[inner],
-    )
-
-
-def _tab_overview(data: dict[str, Any]) -> BlueprintNode:
-    summary = data.get("brief_summary") or data.get("description") or ""
-    return BlueprintNode(
-        component="Card",
-        children=[
-            BlueprintNode(
-                component="CardContent",
-                props={"className": "pt-6"},
-                children=[
-                    BlueprintNode(
-                        component="p",
-                        props={"className": "text-sm text-gray-700 leading-relaxed"},
-                        text=summary or "(no summary available)",
-                    )
-                ],
-            )
-        ],
-    )
-
-
-def _tab_design(data: dict[str, Any]) -> BlueprintNode:
+def _render_design(data: dict[str, Any]) -> str:
     primary = data.get("primary_outcome_measures") or []
     secondary = data.get("secondary_outcome_measures") or []
 
-    sections: list[BlueprintNode] = []
+    if not primary and not secondary:
+        return ""
+
+    parts: list[str] = ["### Design & Endpoints"]
+
     if primary:
-        sections.append(_outcome_section("Primary Outcome Measures", primary))
+        parts.append("**Primary outcome measures:**")
+        for o in primary:
+            measure = _md_escape_inline(o.get("measure", ""))
+            time_frame = _md_escape_inline(o.get("time_frame", ""))
+            if time_frame:
+                parts.append(f"- {measure} _({time_frame})_")
+            else:
+                parts.append(f"- {measure}")
+
     if secondary:
-        sections.append(_outcome_section("Secondary Outcome Measures", secondary))
+        parts.append("")
+        parts.append("**Secondary outcome measures:**")
+        for o in secondary:
+            measure = _md_escape_inline(o.get("measure", ""))
+            time_frame = _md_escape_inline(o.get("time_frame", ""))
+            if time_frame:
+                parts.append(f"- {measure} _({time_frame})_")
+            else:
+                parts.append(f"- {measure}")
 
-    if not sections:
-        sections = [
-            BlueprintNode(
-                component="p",
-                props={"className": "text-sm text-gray-500"},
-                text="No endpoint data available.",
-            )
-        ]
-
-    return BlueprintNode(
-        component="div",
-        props={"className": "space-y-4"},
-        children=sections,
-    )
+    return "\n".join(parts)
 
 
-def _outcome_section(title: str, outcomes: list[dict[str, Any]]) -> BlueprintNode:
-    return BlueprintNode(
-        component="Card",
-        children=[
-            BlueprintNode(
-                component="CardHeader",
-                children=[BlueprintNode(component="CardTitle", text=title)],
-            ),
-            BlueprintNode(
-                component="CardContent",
-                children=[
-                    BlueprintNode(
-                        component="ul",
-                        props={"className": "space-y-2 text-sm"},
-                        children=[
-                            BlueprintNode(
-                                component="li",
-                                props={"className": "border-l-2 border-blue-200 pl-3"},
-                                children=[
-                                    BlueprintNode(
-                                        component="p",
-                                        props={"className": "font-medium"},
-                                        text=str(o.get("measure", "")),
-                                    ),
-                                    BlueprintNode(
-                                        component="p",
-                                        props={"className": "text-gray-600"},
-                                        text=str(o.get("time_frame", "")),
-                                    ),
-                                ],
-                            )
-                            for o in outcomes
-                        ],
-                    )
-                ],
-            ),
-        ],
-    )
-
-
-def _tab_eligibility(data: dict[str, Any]) -> BlueprintNode:
+def _render_eligibility(data: dict[str, Any]) -> str:
     elig = data.get("eligibility") or {}
     criteria = elig.get("criteria") or ""
-    gender = elig.get("gender")
-    min_age = elig.get("minimum_age")
-    max_age = elig.get("maximum_age")
+    gender = elig.get("gender") or ""
+    min_age = elig.get("minimum_age") or ""
+    max_age = elig.get("maximum_age") or ""
 
-    meta_parts = []
+    if not criteria and not gender and not min_age and not max_age:
+        return ""
+
+    parts: list[str] = ["### Eligibility"]
+
+    meta_bits: list[str] = []
     if gender:
-        meta_parts.append(f"Gender: {gender}")
+        meta_bits.append(f"**Gender:** {_md_escape_inline(gender)}")
     if min_age:
-        meta_parts.append(f"Min age: {min_age}")
+        meta_bits.append(f"**Min age:** {_md_escape_inline(min_age)}")
     if max_age:
-        meta_parts.append(f"Max age: {max_age}")
-    meta = " · ".join(meta_parts)
+        meta_bits.append(f"**Max age:** {_md_escape_inline(max_age)}")
+    if meta_bits:
+        parts.append(" · ".join(meta_bits))
+        parts.append("")
 
-    return BlueprintNode(
-        component="Card",
-        children=[
-            BlueprintNode(
-                component="CardHeader",
-                children=[
-                    BlueprintNode(component="CardTitle", text="Eligibility Criteria")
-                ],
-            ),
-            BlueprintNode(
-                component="CardContent",
-                props={"className": "space-y-3"},
-                children=[
-                    BlueprintNode(
-                        component="p",
-                        props={"className": "text-xs text-gray-500"},
-                        text=meta,
-                    ),
-                    BlueprintNode(
-                        component="pre",
-                        props={
-                            "className": "whitespace-pre-wrap text-xs bg-gray-50 "
-                            "p-3 rounded border border-gray-200 font-sans"
-                        },
-                        text=str(criteria),
-                    ),
-                ],
-            ),
-        ],
-    )
+    if criteria:
+        # Criteria text is usually a multi-line string with "Inclusion:" and
+        # "Exclusion:" sections. We wrap it in a fenced plain-text block so
+        # line breaks are preserved and it's clearly demarcated from the
+        # surrounding prose.
+        parts.append("```")
+        parts.append(str(criteria))
+        parts.append("```")
+
+    return "\n".join(parts)
 
 
-def _tab_arms(data: dict[str, Any]) -> BlueprintNode:
+def _render_arms(data: dict[str, Any]) -> str:
     arms = data.get("arms") or []
-    return _simple_table(
-        "Arms & Interventions",
-        ["Arm", "Type", "Description", "Interventions"],
-        [
-            [
-                str(a.get("label", "")),
-                str(a.get("type", "")),
-                str(a.get("description", "")),
-                ", ".join(a.get("interventions") or []),
-            ]
-            for a in arms
-        ],
+    if not arms:
+        return ""
+
+    header = (
+        "### Arms & Interventions\n\n"
+        "| Arm | Type | Interventions |\n"
+        "| --- | --- | --- |\n"
     )
+    rows: list[str] = []
+    for arm in arms:
+        label = _md_escape_cell(arm.get("label") or "—")
+        arm_type = _md_escape_cell(arm.get("type") or "—")
+        interventions = arm.get("interventions") or []
+        if isinstance(interventions, list):
+            interventions_cell = ", ".join(
+                _md_escape_cell(i) for i in interventions if i
+            ) or "—"
+        else:
+            interventions_cell = _md_escape_cell(interventions) or "—"
+        rows.append(f"| {label} | {arm_type} | {interventions_cell} |")
+    return header + "\n".join(rows)
 
 
-def _tab_sites(data: dict[str, Any]) -> BlueprintNode:
+def _render_sites(data: dict[str, Any]) -> str:
     sites = data.get("sites") or data.get("locations") or []
-    return _simple_table(
-        "Study Sites",
-        ["Facility", "City", "Country", "Status"],
-        [
-            [
-                str(s.get("facility", "")),
-                str(s.get("city", "")),
-                str(s.get("country", "")),
-                str(s.get("status", "")),
-            ]
-            for s in sites
-        ],
+    if not sites:
+        return ""
+
+    # Promptclub's TrialRecord.locations is list[str] — handle both shapes
+    if sites and isinstance(sites[0], str):
+        header = "### Sites\n\n"
+        body = "\n".join(f"- {_md_escape_inline(s)}" for s in sites)
+        return header + body
+
+    header = (
+        "### Sites\n\n"
+        "| Facility | City | Country | Status |\n"
+        "| --- | --- | --- | --- |\n"
     )
+    rows: list[str] = []
+    for site in sites:
+        if not isinstance(site, dict):
+            continue
+        facility = _md_escape_cell(site.get("facility") or "—")
+        city = _md_escape_cell(site.get("city") or "—")
+        country = _md_escape_cell(site.get("country") or "—")
+        status = _md_escape_cell(site.get("status") or "—")
+        rows.append(f"| {facility} | {city} | {country} | {status} |")
+    return header + "\n".join(rows) if rows else ""
 
 
-def _tab_publications(data: dict[str, Any]) -> BlueprintNode:
+def _render_publications(data: dict[str, Any]) -> str:
     pubs = data.get("linked_publications") or data.get("publications") or []
-    return _simple_table(
-        "Linked Publications",
-        ["PMID", "Title", "Journal", "Year"],
-        [
-            [
-                str(p.get("pmid", "")),
-                str(p.get("title", "")),
-                str(p.get("journal", "")),
-                str(p.get("year", "")),
-            ]
-            for p in pubs
-        ],
+    if not pubs:
+        return ""
+
+    header = (
+        "### Linked Publications\n\n"
+        "| PMID | Title | Journal · Year |\n"
+        "| --- | --- | --- |\n"
     )
-
-
-# --- Table helper -----------------------------------------------------------
-
-
-def _simple_table(
-    title: str, headers: list[str], rows: list[list[str]]
-) -> BlueprintNode:
-    if not rows:
-        return BlueprintNode(
-            component="p",
-            props={"className": "text-sm text-gray-500"},
-            text=f"No {title.lower()} data available.",
+    rows: list[str] = []
+    for pub in pubs:
+        if not isinstance(pub, dict):
+            continue
+        pmid = pub.get("pmid") or ""
+        pmid_cell = (
+            f"[`{_md_escape_cell(pmid)}`](https://pubmed.ncbi.nlm.nih.gov/"
+            f"{_md_escape_url(pmid)}/)"
+            if pmid
+            else "—"
         )
-
-    header_cells = [
-        BlueprintNode(component="TableHead", text=h) for h in headers
-    ]
-
-    body_rows = [
-        BlueprintNode(
-            component="TableRow",
-            children=[
-                BlueprintNode(component="TableCell", text=cell)
-                for cell in row
-            ],
-        )
-        for row in rows
-    ]
-
-    return BlueprintNode(
-        component="Card",
-        children=[
-            BlueprintNode(
-                component="CardHeader",
-                children=[BlueprintNode(component="CardTitle", text=title)],
-            ),
-            BlueprintNode(
-                component="CardContent",
-                children=[
-                    BlueprintNode(
-                        component="Table",
-                        children=[
-                            BlueprintNode(
-                                component="TableHeader",
-                                children=[
-                                    BlueprintNode(
-                                        component="TableRow", children=header_cells
-                                    )
-                                ],
-                            ),
-                            BlueprintNode(
-                                component="TableBody", children=body_rows
-                            ),
-                        ],
-                    )
-                ],
-            ),
-        ],
-    )
+        title = _md_escape_cell(_truncate(pub.get("title"), 80)) or "—"
+        journal = pub.get("journal") or ""
+        year = pub.get("year") or ""
+        meta = " · ".join(p for p in [journal, str(year) if year else ""] if p) or "—"
+        rows.append(f"| {pmid_cell} | {title} | {_md_escape_cell(meta)} |")
+    return header + "\n".join(rows) if rows else ""
 
 
-def _components() -> list[ComponentImport]:
-    return [
-        ComponentImport(
-            **{
-                "from": "/components/ui/card",
-                "import": [
-                    "Card",
-                    "CardHeader",
-                    "CardTitle",
-                    "CardContent",
-                    "CardDescription",
-                ],
-            }
-        ),
-        ComponentImport(
-            **{
-                "from": "/components/ui/tabs",
-                "import": [
-                    "Tabs",
-                    "TabsList",
-                    "TabsTrigger",
-                    "TabsContent",
-                ],
-            }
-        ),
-        ComponentImport(
-            **{
-                "from": "/components/ui/table",
-                "import": [
-                    "Table",
-                    "TableHeader",
-                    "TableRow",
-                    "TableHead",
-                    "TableBody",
-                    "TableCell",
-                ],
-            }
-        ),
-        ComponentImport(
-            **{"from": "/components/ui/badge", "import": ["Badge"]}
-        ),
-        ComponentImport(
-            **{"from": "/components/ui/separator", "import": ["Separator"]}
-        ),
-    ]
+# --- Escaping helpers ------------------------------------------------------
+
+
+def _md_escape(text: object) -> str:
+    if text is None:
+        return ""
+    s = str(text)
+    return s.replace("\\", "\\\\").replace("_", "\\_").replace("*", "\\*")
+
+
+def _md_escape_paragraph(text: object) -> str:
+    """Escape for paragraph body — preserves newlines, neutralizes emphasis."""
+    if text is None:
+        return ""
+    return str(text).replace("\\", "\\\\").replace("*", "\\*")
+
+
+def _md_escape_inline(text: object) -> str:
+    if text is None:
+        return ""
+    return str(text).replace("\\", "\\\\").replace("*", "\\*").strip()
+
+
+def _md_escape_cell(text: object) -> str:
+    if text is None:
+        return ""
+    s = str(text).replace("\n", " ").replace("\r", " ").strip()
+    return s.replace("|", "\\|")
+
+
+def _md_escape_url(url: object) -> str:
+    if url is None:
+        return ""
+    return str(url).replace(")", "%29").replace("(", "%28").replace(" ", "%20")
+
+
+def _truncate(text: str | None, max_len: int) -> str:
+    if not text:
+        return ""
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1].rstrip() + "…"
