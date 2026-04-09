@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from app.adapters.clinicaltrials_v2 import ClinicalTrialsV2Adapter
 from app.adapters.openfda import OpenFDAAdapter
 from app.adapters.opentargets import OpenTargetsAdapter
@@ -107,3 +109,119 @@ class Orchestrator:
             await self.fda.healthcheck(sample_query="Keytruda"),
             await self.web.healthcheck(sample_query=f"latest {sample_query} oncology developments"),
         ]
+
+    async def build_trial_comparison(self, nct_ids: list[str]) -> dict:
+        """Fetch multiple trials in parallel and return them side-by-side for comparison."""
+        tasks = [self.ct.get_trial(nct_id) for nct_id in nct_ids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        trials = []
+        errors = []
+        for nct_id, result in zip(nct_ids, results):
+            if isinstance(result, Exception):
+                errors.append({"nct_id": nct_id, "error": str(result)})
+            elif result is None:
+                errors.append({"nct_id": nct_id, "error": "not found"})
+            else:
+                trials.append(result)
+        return {
+            "count": len(trials),
+            "trials": [t.model_dump() for t in trials],
+            "errors": errors,
+        }
+
+    async def analyze_indication_landscape(
+        self, condition: str, phase: str | None = None
+    ) -> dict:
+        """Return trial, publication, and FDA approval counts for a condition."""
+        trial_count, pub_count, fda_count, diseases = await asyncio.gather(
+            self.ct.count_trials(condition=condition, phase=phase),
+            self.pubmed.count_publications(condition=condition),
+            self.fda.count_approved(condition=condition),
+            self.ot.resolve_disease(query=condition, page_size=3),
+            return_exceptions=True,
+        )
+        return {
+            "condition": condition,
+            "phase_filter": phase,
+            "clinical_trials_count": trial_count if not isinstance(trial_count, Exception) else 0,
+            "pubmed_publications_3yr": pub_count if not isinstance(pub_count, Exception) else 0,
+            "fda_label_records": fda_count if not isinstance(fda_count, Exception) else 0,
+            "disease_ontology": (
+                [d.model_dump() for d in diseases]
+                if not isinstance(diseases, Exception)
+                else []
+            ),
+        }
+
+    async def analyze_whitespace(self, condition: str) -> dict:
+        """Identify underserved segments by comparing phase/status counts and approvals."""
+        phases = ["1", "2", "3"]
+        statuses = ["recruiting", "completed"]
+
+        results = await asyncio.gather(
+            *[self.ct.count_trials(condition=condition, phase=p) for p in phases],
+            *[self.ct.count_trials(condition=condition, status=s) for s in statuses],
+            self.pubmed.count_publications(condition=condition),
+            self.fda.count_approved(condition=condition),
+            return_exceptions=True,
+        )
+
+        phase_counts = {
+            f"phase_{p}": (results[i] if not isinstance(results[i], Exception) else 0)
+            for i, p in enumerate(phases)
+        }
+        status_counts = {
+            s: (results[3 + i] if not isinstance(results[3 + i], Exception) else 0)
+            for i, s in enumerate(statuses)
+        }
+        pub_count = results[6] if not isinstance(results[6], Exception) else 0
+        fda_count = results[7] if not isinstance(results[7], Exception) else 0
+
+        gaps: list[str] = []
+        if phase_counts.get("phase_1", 0) < 5:
+            gaps.append(
+                f"Very few Phase 1 trials ({phase_counts['phase_1']}) — early-stage research may be limited."
+            )
+        if phase_counts.get("phase_3", 0) < 3:
+            gaps.append(
+                f"Few Phase 3 trials ({phase_counts['phase_3']}) — late-stage evidence may be lacking."
+            )
+        if fda_count == 0:
+            gaps.append("No FDA label records found — potential whitespace for first-in-class approval.")
+        elif fda_count < 3:
+            gaps.append(f"Only {fda_count} FDA label records — limited approved options currently available.")
+        if pub_count < 50:
+            gaps.append(
+                f"Low publication volume ({pub_count} in last 3 years) — under-researched area."
+            )
+        if status_counts.get("recruiting", 0) < 3:
+            gaps.append(
+                f"Few actively recruiting trials ({status_counts['recruiting']}) — limited enrollment opportunities."
+            )
+
+        return {
+            "condition": condition,
+            "trial_counts_by_phase": phase_counts,
+            "trial_counts_by_status": status_counts,
+            "pubmed_publications_3yr": pub_count,
+            "fda_label_records": fda_count,
+            "identified_whitespace": gaps,
+        }
+
+    async def get_sponsor_overview(self, condition: str, page_size: int = 25) -> dict:
+        """Return trial counts grouped by sponsor for a condition."""
+        trials = await self.ct.search_trials(disease_query=condition, page_size=page_size)
+        sponsor_map: dict[str, int] = {}
+        for trial in trials:
+            sponsor = trial.sponsor or "Unknown"
+            sponsor_map[sponsor] = sponsor_map.get(sponsor, 0) + 1
+
+        sorted_sponsors = sorted(sponsor_map.items(), key=lambda x: x[1], reverse=True)
+        return {
+            "condition": condition,
+            "total_trials_sampled": len(trials),
+            "unique_sponsors": len(sponsor_map),
+            "sponsor_trial_counts": [
+                {"sponsor": s, "trial_count": c} for s, c in sorted_sponsors
+            ],
+        }

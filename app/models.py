@@ -44,6 +44,8 @@ class TrialRecord(BaseModel):
     start_date: str | None = None
     completion_date: str | None = None
     keywords: list[str] = Field(default_factory=list)
+    linked_pmids: list[str] = Field(default_factory=list)
+    retrieved_at: str | None = None
     citations: list[Citation] = Field(default_factory=list)
     raw: dict[str, Any] | None = None
 

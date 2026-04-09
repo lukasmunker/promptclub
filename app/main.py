@@ -12,7 +12,35 @@ from app.settings import settings
 
 
 orchestrator = Orchestrator()
-mcp = FastMCP(name="clinical-intelligence-mcp")
+mcp = FastMCP(
+    name="clinical-intelligence-mcp",
+    instructions="""
+You are a clinical intelligence assistant specializing in oncology competitive intelligence.
+You have access to structured data from ClinicalTrials.gov, PubMed, Open Targets, openFDA,
+and a web search grounding service.
+
+ROUTING RULES — choose the right tool for the question:
+- "Find trials for [disease]" → search_trials
+- "Compare NCT123 vs NCT456" or "side-by-side comparison" → build_trial_comparison
+- "How big is the [disease] landscape?" or "how many trials exist?" → analyze_indication_landscape
+- "Where are the gaps / whitespace / underserved areas in [disease]?" → analyze_whitespace
+- "Who are the key players / sponsors in [disease]?" → get_sponsor_overview
+- "Tell me about NCT[ID]" → get_trial_details
+- "Find papers / publications about [topic]" → search_publications
+- "What targets are associated with [disease]?" → resolve_disease then get_target_context
+- "Is [drug] FDA approved? / regulatory context" → get_regulatory_context
+- "Latest news / recent developments" → web_context_search
+- "Is the system working?" → test_data_sources
+
+GUARDRAILS:
+- Do NOT make forward-looking investment, regulatory, or clinical outcome predictions.
+- Do NOT speculate beyond what the data sources explicitly state.
+- Always surface source citations from the tool response.
+- Medical abbreviations (NSCLC, HCC, TNBC, etc.) and trade names (Keytruda, Opdivo) are
+  automatically expanded — pass them as-is to the tools.
+- Prefer parallel tool calls when multiple independent data sources are needed.
+""",
+)
 
 
 @mcp.tool()
@@ -20,15 +48,27 @@ async def search_trials(
     disease_query: str,
     phase: str | None = None,
     sponsor: str | None = None,
+    status: str | None = None,
     page_size: int = 10,
 ) -> dict[str, Any]:
     """
-    Search oncology trial records from ClinicalTrials.gov and enrich them with linked PubMed publications.
+    Search ClinicalTrials.gov for oncology trials and enrich results with linked PubMed publications.
+
+    USE THIS WHEN: The user asks to find, list, or browse trials for a disease, drug, or sponsor.
+    Supports optional filters:
+      - phase: "1", "2", "3", "phase 3", "PHASE2" (all formats accepted)
+      - sponsor: partial sponsor name, e.g. "[Company]", "Merck"
+      - status: "recruiting", "completed", "active", "not_yet_recruiting", etc.
+      - page_size: number of results (default 10, max ~100)
+
+    Medical abbreviations (NSCLC, HCC, TNBC) and trade names (Keytruda→pembrolizumab) are
+    automatically expanded. Returns full trial records with linked PMIDs and citations.
     """
     result = await orchestrator.search_trials_with_publications(
         disease_query=disease_query,
         phase=phase,
         sponsor=sponsor,
+        status=status,
         page_size=page_size,
     )
     return result.model_dump()
@@ -38,6 +78,10 @@ async def search_trials(
 async def get_trial_details(nct_id: str) -> dict[str, Any]:
     """
     Fetch a single trial record by NCT ID from ClinicalTrials.gov.
+
+    USE THIS WHEN: The user asks about a specific trial by its NCT ID (e.g. NCT04516746),
+    or wants full details (endpoints, eligibility, locations, linked publications) for one trial.
+    Returns complete structured data including inclusion/exclusion criteria and linked PMIDs.
     """
     record = await orchestrator.get_trial_details(nct_id)
     if not record:
@@ -49,6 +93,11 @@ async def get_trial_details(nct_id: str) -> dict[str, Any]:
 async def search_publications(query: str, page_size: int = 10) -> dict[str, Any]:
     """
     Search PubMed for publications relevant to a disease, therapy, sponsor, or NCT ID.
+
+    USE THIS WHEN: The user asks for papers, studies, or evidence from the scientific literature.
+    Accepts free-text PubMed queries including MeSH terms, drug names, disease names, or NCT IDs
+    (e.g. '"NCT04516746"' to find publications from a specific trial).
+    Returns title, abstract, authors, journal, pub date, and linked trial IDs (NCT numbers).
     """
     pubs = await orchestrator.search_publications(query=query, page_size=page_size)
     return {"count": len(pubs), "results": [p.model_dump() for p in pubs]}
@@ -57,7 +106,12 @@ async def search_publications(query: str, page_size: int = 10) -> dict[str, Any]
 @mcp.tool()
 async def get_target_context(disease_id: str) -> dict[str, Any]:
     """
-    Get target-disease associations from Open Targets using an ontology disease ID, e.g. EFO_0000756.
+    Get target-disease associations from Open Targets using an EFO ontology disease ID.
+
+    USE THIS WHEN: The user asks about biological targets, mechanisms of action, or which genes/
+    proteins are associated with a disease. Requires an EFO ontology ID (e.g. EFO_0000756).
+    If you only have a disease name, call resolve_disease first to get the ID.
+    Returns ranked targets with association scores from genetics, literature, and pathway data.
     """
     rows = await orchestrator.get_target_context(disease_id=disease_id)
     return {"count": len(rows), "results": [r.model_dump() for r in rows]}
@@ -66,7 +120,12 @@ async def get_target_context(disease_id: str) -> dict[str, Any]:
 @mcp.tool()
 async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
     """
-    Get public FDA labeling/regulatory context for a therapy name using openFDA.
+    Get public FDA labeling and regulatory context for a therapy using openFDA drug labels.
+
+    USE THIS WHEN: The user asks about FDA approval status, indications, warnings, active
+    ingredients, or routes of administration for a drug. Accepts brand names (Keytruda) or
+    generic/INN names (pembrolizumab). Returns structured label data with indications_and_usage,
+    active ingredients, application numbers, and manufacturer.
     """
     rows = await orchestrator.get_regulatory_context(drug_name=drug_name)
     return {"count": len(rows), "results": [r.model_dump() for r in rows]}
@@ -75,8 +134,12 @@ async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
 @mcp.tool()
 async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
     """
-    Resolve a free-text disease name to Open Targets disease IDs (EFO ontology).
-    Use before get_target_context when you only have a disease name, not an EFO ID.
+    Resolve a free-text disease name to Open Targets EFO ontology IDs.
+
+    USE THIS WHEN: You need an EFO disease ID before calling get_target_context, or when the
+    user asks about disease ontology / synonyms. Input can be any disease name — returns
+    matched EFO IDs, canonical names, and descriptions. Always call this before
+    get_target_context if you only have a free-text disease name.
     """
     rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
     return {"count": len(rows), "results": [r.model_dump() for r in rows]}
@@ -85,9 +148,12 @@ async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
 @mcp.tool()
 async def web_context_search(query: str) -> dict[str, Any]:
     """
-    Search public web sources via Vertex AI Google Search grounding.
-    Use for recent news, press releases, or context not covered by structured databases.
-    Requires GCP Vertex AI credentials (gracefully disabled if unavailable).
+    Search public web sources via Vertex AI Google Search grounding for real-time context.
+
+    USE THIS WHEN: The user asks about recent news, press releases, conference data (ASCO, ESMO),
+    pipeline announcements, or any information likely to be too recent for structured databases.
+    Complements structured data sources but should NOT override them. Requires GCP credentials
+    (returns empty gracefully if unavailable). Always cite the web sources returned.
     """
     rows = await orchestrator.web_context(query=query)
     return {"count": len(rows), "results": [r.model_dump() for r in rows]}
@@ -96,10 +162,74 @@ async def web_context_search(query: str) -> dict[str, Any]:
 @mcp.tool()
 async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
     """
-    Run live health checks against all configured data sources.
+    Run live health checks against all configured data sources (ClinicalTrials, PubMed, Open Targets, openFDA, Web).
+
+    USE THIS WHEN: The user asks if the system is working, wants to verify connectivity,
+    or reports that a data source seems down. Returns latency, status, and sample IDs for each source.
     """
     results = await orchestrator.test_sources(sample_query=sample_query)
     return {"results": [r.model_dump() for r in results]}
+
+
+@mcp.tool()
+async def build_trial_comparison(nct_ids: list[str]) -> dict[str, Any]:
+    """
+    Fetch multiple trials in parallel and return them side-by-side for structured comparison.
+
+    USE THIS WHEN: The user wants to compare 2 or more specific trials by their NCT IDs
+    (e.g. "compare NCT04516746 and NCT03956680"), or asks for a head-to-head comparison
+    of trial designs, endpoints, eligibility, enrollment, or sponsor information.
+    Pass a list of NCT IDs — all trials are fetched in parallel for speed.
+    Returns full structured records for each trial plus an errors list for any not found.
+    """
+    return await orchestrator.build_trial_comparison(nct_ids=nct_ids)
+
+
+@mcp.tool()
+async def analyze_indication_landscape(
+    condition: str, phase: str | None = None
+) -> dict[str, Any]:
+    """
+    Return a high-level landscape overview for a disease indication across all data sources.
+
+    USE THIS WHEN: The user asks "how big is the [disease] space?", "how many trials are there
+    for [condition]?", "what is the research activity level?", or needs a landscape summary
+    before diving into specifics. Queries ClinicalTrials.gov, PubMed, openFDA, and Open Targets
+    in parallel. Optional phase filter narrows trial count to a specific development stage.
+    Returns counts for trials, publications (last 3 years), FDA label records, and disease
+    ontology matches. Medical abbreviations (NSCLC, HCC) are automatically expanded.
+    """
+    return await orchestrator.analyze_indication_landscape(condition=condition, phase=phase)
+
+
+@mcp.tool()
+async def analyze_whitespace(condition: str) -> dict[str, Any]:
+    """
+    Identify underserved segments and whitespace opportunities in a disease indication.
+
+    USE THIS WHEN: The user asks "where are the gaps?", "what is underserved?", "are there
+    whitespace opportunities in [disease]?", "which phases lack trials?", or any competitive
+    intelligence question about unmet needs and market gaps.
+    Queries trial counts by phase (1/2/3) and status (recruiting/completed), plus publication
+    volume and FDA approvals — all in parallel. Returns a structured breakdown and a plain-language
+    list of identified whitespace signals (e.g. "Few Phase 3 trials — late-stage evidence lacking").
+    Medical abbreviations are automatically expanded.
+    """
+    return await orchestrator.analyze_whitespace(condition=condition)
+
+
+@mcp.tool()
+async def get_sponsor_overview(condition: str, page_size: int = 25) -> dict[str, Any]:
+    """
+    Return a ranked overview of sponsors/companies active in a disease indication.
+
+    USE THIS WHEN: The user asks "who are the key players in [disease]?", "which companies
+    are running trials for [condition]?", "competitive landscape by sponsor", or wants to
+    understand which pharma/biotech organizations are most active in a space.
+    Fetches up to page_size trials and groups them by lead sponsor, sorted by trial count.
+    Returns unique sponsor count, total trials sampled, and a ranked sponsor list with counts.
+    """
+    return await orchestrator.get_sponsor_overview(condition=condition, page_size=page_size)
 
 
 # Create MCP ASGI app — triggers lazy session_manager initialization.
