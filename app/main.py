@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from mcp.server.fastmcp import FastMCP
 
+from app.citations import attach_citation_layer, citations_from_rows
 from app.services.orchestration import Orchestrator
 from app.settings import settings
 from app.utils import lean_dump
@@ -128,12 +129,13 @@ async def search_trials(
     )
     if empty is not None:
         return empty
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="search_trials",
         promptclub_data=lean_dump(result),
         prefer_visualization=prefer_visualization,
         query=disease_query,
     )
+    return attach_citation_layer(viz, result.citations)
 
 
 @mcp.tool()
@@ -157,11 +159,12 @@ async def get_trial_details(
         promptclub_data: dict[str, Any] = {"found": False, "nct_id": nct_id}
     else:
         promptclub_data = {"found": True, "trial": lean_dump(record)}
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="get_trial_details",
         promptclub_data=promptclub_data,
         prefer_visualization=prefer_visualization,
     )
+    return attach_citation_layer(viz, record.citations if record else None)
 
 
 @mcp.tool()
@@ -186,7 +189,7 @@ async def search_publications(
     empty = _maybe_no_data(pubs, source="PubMed", query_descriptor=query)
     if empty is not None:
         return empty
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="search_publications",
         promptclub_data={
             "count": len(pubs),
@@ -195,6 +198,7 @@ async def search_publications(
         prefer_visualization=prefer_visualization,
         query=query,
     )
+    return attach_citation_layer(viz, citations_from_rows(pubs))
 
 
 @mcp.tool()
@@ -218,7 +222,7 @@ async def get_target_context(
     empty = _maybe_no_data(rows, source="Open Targets", query_descriptor=f"disease_id={disease_id}")
     if empty is not None:
         return empty
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="get_target_context",
         promptclub_data={
             "count": len(rows),
@@ -227,6 +231,7 @@ async def get_target_context(
         prefer_visualization=prefer_visualization,
         disease_id=disease_id,
     )
+    return attach_citation_layer(viz, citations_from_rows(rows))
 
 
 @mcp.tool()
@@ -255,7 +260,10 @@ async def get_known_drugs_for_target(ensembl_id: str, page_size: int = 25) -> di
     )
     if empty is not None:
         return empty
-    return {"count": len(rows), "results": [lean_dump(r) for r in rows]}
+    return attach_citation_layer(
+        {"count": len(rows), "results": [lean_dump(r) for r in rows]},
+        citations_from_rows(rows),
+    )
 
 
 @mcp.tool()
@@ -275,13 +283,14 @@ async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
     empty = _maybe_no_data(rows, source="openFDA", query_descriptor=f"drug_name={drug_name}")
     if empty is not None:
         return empty
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="get_regulatory_context",
         promptclub_data={
             "count": len(rows),
             "results": [lean_dump(r) for r in rows],
         },
     )
+    return attach_citation_layer(viz, citations_from_rows(rows))
 
 
 @mcp.tool()
@@ -300,13 +309,14 @@ async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
     empty = _maybe_no_data(rows, source="Open Targets disease ontology", query_descriptor=query)
     if empty is not None:
         return empty
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="resolve_disease",
         promptclub_data={
             "count": len(rows),
             "results": [lean_dump(r) for r in rows],
         },
     )
+    return attach_citation_layer(viz, citations_from_rows(rows))
 
 
 @mcp.tool()
@@ -326,7 +336,7 @@ async def web_context_search(
     the artifact described in ui.artifact using ui.raw (HTML card list).
     """
     rows = await orchestrator.web_context(query=query)
-    return build_response_from_promptclub(
+    viz = build_response_from_promptclub(
         tool_name="web_context_search",
         promptclub_data={
             "count": len(rows),
@@ -335,6 +345,7 @@ async def web_context_search(
         prefer_visualization=prefer_visualization,
         query=query,
     )
+    return attach_citation_layer(viz, citations_from_rows(rows))
 
 
 @mcp.tool()
