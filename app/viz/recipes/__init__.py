@@ -6,7 +6,10 @@ just transform data shapes into envelope pieces.
 """
 
 from app.viz.recipes import (
+    concept_card,
     indication_dashboard,
+    info_card,
+    single_entity_card,
     sponsor_pipeline_cards,
     target_associations_table,
     trial_detail_tabs,
@@ -24,11 +27,17 @@ REGISTRY = {
     "sponsor_pipeline_cards": sponsor_pipeline_cards.build,
     "target_associations_table": target_associations_table.build,
     "whitespace_card": whitespace_card.build,
+    "info_card": info_card.build,
+    "concept_card": concept_card.build,
+    "single_entity_card": single_entity_card.build,
 }
 
 __all__ = [
     "REGISTRY",
+    "concept_card",
     "indication_dashboard",
+    "info_card",
+    "single_entity_card",
     "sponsor_pipeline_cards",
     "target_associations_table",
     "trial_detail_tabs",
