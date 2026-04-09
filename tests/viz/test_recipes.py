@@ -619,3 +619,34 @@ def test_info_card_escapes_html():
     payload = info_card.build(data, sources=[])
     assert "<script>" not in payload.raw
     assert "&lt;script&gt;" in payload.raw
+
+
+from app.viz.recipes import concept_card
+
+
+def test_concept_card_renders_definition():
+    data = {
+        "term": "RECIST 1.1",
+        "definition": "Response Evaluation Criteria In Solid Tumors, version 1.1.",
+        "category": "response-criterion",
+    }
+    payload = concept_card.build(data, sources=[])
+    assert payload.recipe == "concept_card"
+    assert "RECIST 1.1" in payload.raw
+    assert "Response Evaluation Criteria" in payload.raw
+
+
+def test_concept_card_renders_with_extended_context():
+    data = {
+        "term": "Overall Survival",
+        "definition": "Time from randomization to death from any cause.",
+        "context": "Considered the gold standard endpoint in oncology trials.",
+    }
+    payload = concept_card.build(data, sources=[])
+    assert "Overall Survival" in payload.raw
+    assert "gold standard" in payload.raw
+
+
+def test_concept_card_handles_minimal_input():
+    payload = concept_card.build({"term": "Phase 3"}, sources=[])
+    assert "Phase 3" in payload.raw
