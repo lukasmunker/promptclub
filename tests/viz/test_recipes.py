@@ -518,10 +518,10 @@ def test_build_response_indication_dashboard_is_html(indication_landscape_nsclc)
 
 def test_build_response_skip_has_no_ui(search_empty):
     envelope = build_response("search_clinical_trials", search_empty, sources=[])
-    assert "ui" not in envelope  # stripped by exclude_none
+    # Post-Task-10: SKIP path now routes through fallback, ui is always populated
+    assert envelope.get("ui") is not None
+    assert envelope["ui"]["recipe"] in ("info_card", "concept_card", "single_entity_card")
     assert envelope["data"]["total"] == 0
-    assert "Cite sources" in envelope["render_hint"]
-    assert "No forward-looking" in envelope["render_hint"]
 
 
 def test_build_response_with_pydantic_source_instances(search_melanoma_phase3):
@@ -543,7 +543,8 @@ def test_build_response_with_pydantic_source_instances(search_melanoma_phase3):
 
 def test_build_response_unknown_tool_returns_text_fallback():
     envelope = build_response("unknown_tool", {"anything": True}, sources=[])
-    assert "ui" not in envelope
+    # Post-Task-10: unknown tool routes through fallback, ui is always populated
+    assert envelope.get("ui") is not None
     assert envelope["data"] == {"anything": True}
 
 
