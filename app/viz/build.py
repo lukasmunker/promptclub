@@ -7,6 +7,7 @@ implementation detail behind this single function.
 
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from typing import Any
 
@@ -21,6 +22,15 @@ from app.viz.fallback import build_fallback_data, pick_fallback_recipe
 from app.viz.recipes import REGISTRY
 
 __all__ = ["build_response"]
+
+
+_logger = logging.getLogger(__name__)
+# Sticky kill-switch: once enrichment fails (e.g. lexicon file missing or
+# malformed at runtime), we disable it for the rest of the process so the
+# WS1 artifact coverage guarantee is not broken by repeated exceptions. The
+# flag is module-level and intentionally not reset at runtime — a restart
+# is required to re-enable enrichment.
+_enrichment_disabled = False
 
 
 @lru_cache(maxsize=1)
@@ -63,7 +73,31 @@ def build_response(
     # Enrich the data dict with knowledge annotations BEFORE choosing
     # a recipe. The enriched dict carries a top-level
     # ``knowledge_annotations`` field that recipes can opt into.
-    enriched_data = enrich(data, _lexicon())
+    #
+    # Failures in enrichment are NON-FATAL — if the lexicon is missing,
+    # malformed, or the enricher itself blows up, we log once and
+    # continue with unenriched data. This is critical: WS1's coverage
+    # guarantee (every tool response emits an artifact) must not be
+    # broken by a bad merge in the lexicon file. @lru_cache does not
+    # cache exceptions, so without this try/except every subsequent
+    # call would re-raise and take the whole MCP server offline.
+    global _enrichment_disabled
+    if _enrichment_disabled:
+        enriched_data = dict(data)
+        enriched_data["knowledge_annotations"] = []
+    else:
+        try:
+            enriched_data = enrich(data, _lexicon())
+        except Exception as e:  # noqa: BLE001 — we truly want to catch everything
+            _logger.error(
+                "Enrichment failed — disabling for the rest of this process. "
+                "Error: %s",
+                e,
+                exc_info=True,
+            )
+            _enrichment_disabled = True
+            enriched_data = dict(data)
+            enriched_data["knowledge_annotations"] = []
 
     if decision.kind == DecisionKind.USE and decision.recipe in REGISTRY:
         recipe_name = decision.recipe
