@@ -102,12 +102,26 @@ async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
     return {"results": [r.model_dump() for r in results]}
 
 
-# Create MCP ASGI app here to trigger lazy session_manager initialization
-# before the lifespan runs (session_manager is created on first call).
-_mcp_asgi = mcp.streamable_http_app()
-# Disable trailing-slash redirects inside the FastMCP Starlette sub-app.
-# Without this, POST /mcp is redirected 307 to /mcp/ and the body is lost.
-_mcp_asgi.router.redirect_slashes = False
+# Create MCP ASGI app — triggers lazy session_manager initialization.
+_mcp_asgi_inner = mcp.streamable_http_app()
+
+
+class _MCPPathNormalizer:
+    """Normalize /mcp → /mcp/ before FastMCP's router sees the path.
+
+    Starlette's Mount('/mcp') returns Match.NONE for path '/mcp' (no trailing
+    slash), so the router sends a 307 redirect. HTTP clients like LibreChat's
+    fetch do not resend POST bodies after a redirect. Fixing the path here
+    avoids the redirect entirely.
+    """
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http" and scope.get("path") == "/mcp":
+            scope = {**scope, "path": "/mcp/"}
+        await _mcp_asgi_inner(scope, receive, send)
+
+
+_mcp_asgi = _MCPPathNormalizer()
 
 
 @asynccontextmanager
