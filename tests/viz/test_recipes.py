@@ -545,7 +545,9 @@ def test_build_response_unknown_tool_returns_text_fallback():
     envelope = build_response("unknown_tool", {"anything": True}, sources=[])
     # Post-Task-10: unknown tool routes through fallback, ui is always populated
     assert envelope.get("ui") is not None
-    assert envelope["data"] == {"anything": True}
+    # Post-Task-13: enrichment adds knowledge_annotations (may be empty)
+    assert envelope["data"]["anything"] is True
+    assert "knowledge_annotations" in envelope["data"]
 
 
 def test_build_response_compare_trials_gantt(compare_trials_three):
