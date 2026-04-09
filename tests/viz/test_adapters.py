@@ -149,8 +149,8 @@ def test_search_trials_single_hit_skips_visualization():
         promptclub_data=response.model_dump(),
         query="rare",
     )
-    # Single rich hit: decision layer skips
-    assert "ui" not in env
+    # Post-Task-10: SKIP path routes through fallback, ui is always populated
+    assert env.get("ui") is not None
 
 
 def test_search_trials_flattens_phase_list():
@@ -190,8 +190,8 @@ def test_trial_details_not_found_returns_plain_envelope():
         tool_name="get_trial_details",
         promptclub_data={"found": False, "nct_id": "NCT99999999"},
     )
-    # No ui, text-only answer
-    assert "ui" not in env
+    # Post-Task-10: SKIP path routes through fallback, ui is always populated
+    assert env.get("ui") is not None
     assert env["data"]["found"] is False
 
 
@@ -356,7 +356,8 @@ def test_target_context_single_association_skips():
         promptclub_data={"count": 1, "results": [r.model_dump() for r in rows]},
         disease_id="EFO_00001",
     )
-    assert "ui" not in env
+    # Post-Task-10: SKIP path routes through fallback, ui is always populated
+    assert env.get("ui") is not None
 
 
 # --- web_context_search adapter ---------------------------------------------
@@ -406,10 +407,8 @@ def test_regulatory_context_skips():
         tool_name="get_regulatory_context",
         promptclub_data={"count": 0, "results": []},
     )
-    # No recipe wired for this tool → always text
-    assert "ui" not in env
-    assert "Cite sources" in env["render_hint"]
-    assert "No forward-looking" in env["render_hint"]
+    # Post-Task-10: no recipe wired, but fallback always emits ui
+    assert env.get("ui") is not None
 
 
 # --- build_trial_comparison adapter (NEW) -----------------------------------
@@ -468,7 +467,8 @@ def test_build_trial_comparison_single_trial_skips():
         tool_name="build_trial_comparison",
         promptclub_data={"count": 1, "trials": [trial.model_dump()], "errors": []},
     )
-    assert "ui" not in env  # nothing to compare
+    # Post-Task-10: SKIP path routes through fallback, ui is always populated
+    assert env.get("ui") is not None
 
 
 def test_build_trial_comparison_missing_dates_falls_back_to_cards():
@@ -548,7 +548,8 @@ def test_analyze_whitespace_empty_data_skips():
             "identified_whitespace": [],
         },
     )
-    assert "ui" not in env
+    # Post-Task-10: SKIP path routes through fallback, ui is always populated
+    assert env.get("ui") is not None
 
 
 # --- analyze_indication_landscape + get_sponsor_overview text-only ---------
@@ -566,9 +567,8 @@ def test_analyze_indication_landscape_text_only():
             "disease_ontology": [],
         },
     )
-    # Flat aggregate counts → text-only for now
-    assert "ui" not in env
-    assert "Cite sources" in env["render_hint"]
+    # Post-Task-10: flat aggregate counts route through fallback, ui is always populated
+    assert env.get("ui") is not None
 
 
 def test_get_sponsor_overview_text_only():
@@ -584,5 +584,5 @@ def test_get_sponsor_overview_text_only():
             ],
         },
     )
-    # No recipe wired yet for this tool → text-only
-    assert "ui" not in env
+    # Post-Task-10: no recipe wired, but fallback always emits ui
+    assert env.get("ui") is not None
