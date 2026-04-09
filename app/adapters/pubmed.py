@@ -27,6 +27,27 @@ class PubMedAdapter:
             return []
         return await self._fetch_pmids(pmids)
 
+    async def count_publications(self, condition: str, years: int = 3) -> int:
+        """Return approximate PubMed article count for a condition over the last N years."""
+        from datetime import datetime
+        current_year = datetime.now().year
+        params = {
+            "db": "pubmed",
+            "term": f"{condition}[MeSH Terms] OR {condition}[Title/Abstract]",
+            "mindate": str(current_year - years),
+            "maxdate": str(current_year),
+            "retmax": "0",
+            "retmode": "json",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout, headers=self.headers) as client:
+                resp = await client.get(self.ESEARCH_URL, params=params)
+                if resp.status_code == 200:
+                    return int(resp.json().get("esearchresult", {}).get("count", 0))
+        except Exception:
+            pass
+        return 0
+
     async def get_publications_for_trial(self, nct_id: str, page_size: int = 10) -> list[PublicationRecord]:
         return await self.search_publications(query=f'"{nct_id}"', page_size=page_size)
 

@@ -86,3 +86,59 @@ def matches_any_text(candidates: list[str], needle: str | None) -> bool:
         return True
     n = normalize_text_match(needle)
     return any(n in normalize_text_match(x) for x in candidates)
+
+
+# ---------------------------------------------------------------------------
+# Medical alias normalization
+# ---------------------------------------------------------------------------
+
+CONDITION_ALIASES: dict[str, str] = {
+    "nsclc": "non-small cell lung cancer",
+    "sclc": "small cell lung cancer",
+    "hcc": "hepatocellular carcinoma",
+    "rcc": "renal cell carcinoma",
+    "tnbc": "triple-negative breast cancer",
+    "mm": "multiple myeloma",
+    "cll": "chronic lymphocytic leukemia",
+    "cml": "chronic myeloid leukemia",
+    "dlbcl": "diffuse large B-cell lymphoma",
+    "aml": "acute myeloid leukemia",
+    "gist": "gastrointestinal stromal tumor",
+    "crc": "colorectal cancer",
+    "mcrc": "metastatic colorectal cancer",
+    "pdac": "pancreatic ductal adenocarcinoma",
+    "ucc": "urothelial cell carcinoma",
+    "mbc": "metastatic breast cancer",
+    "oc": "ovarian cancer",
+    "ec": "endometrial cancer",
+    "mcc": "merkel cell carcinoma",
+}
+
+DRUG_ALIASES: dict[str, str] = {
+    "keytruda": "pembrolizumab",
+    "opdivo": "nivolumab",
+    "yervoy": "ipilimumab",
+    "tecentriq": "atezolizumab",
+    "bavencio": "avelumab",
+    "imfinzi": "durvalumab",
+    "libtayo": "cemiplimab",
+    "herceptin": "trastuzumab",
+    "avastin": "bevacizumab",
+    "rituxan": "rituximab",
+    "zelboraf": "vemurafenib",
+    "tafinlar": "dabrafenib",
+    "mekinist": "trametinib",
+    "ibrance": "palbociclib",
+    "verzenio": "abemaciclib",
+    "kisqali": "ribociclib",
+}
+
+
+def normalize_condition(term: str) -> str:
+    """Expand medical abbreviations to full disease names for better API matches."""
+    return CONDITION_ALIASES.get(term.lower().strip(), term)
+
+
+def normalize_drug(term: str) -> str:
+    """Map trade names to INN (generic) drug names for better API matches."""
+    return DRUG_ALIASES.get(term.lower().strip(), term)
