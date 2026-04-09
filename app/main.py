@@ -115,7 +115,7 @@ async def lifespan(app: FastAPI):
         yield
 
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
+app = FastAPI(title=settings.app_name, lifespan=lifespan, redirect_slashes=False)
 
 
 @app.get("/")
