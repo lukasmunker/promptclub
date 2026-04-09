@@ -1,0 +1,61 @@
+{
+  "nct_id": "NCT01234567",
+  "title": "Pembrolizumab vs Placebo in Advanced Melanoma",
+  "phase": "Phase 3",
+  "status": "Recruiting",
+  "sponsor": "Sponsor A",
+  "enrollment": 450,
+  "start_date": "2023-05-01",
+  "primary_completion_date": "2026-12-01",
+  "brief_summary": "A randomized, double-blind trial comparing pembrolizumab with placebo in patients with advanced melanoma after surgical resection.",
+  "primary_outcome_measures": [
+    { "measure": "Recurrence-Free Survival", "time_frame": "Up to 5 years" },
+    { "measure": "Overall Survival", "time_frame": "Up to 10 years" }
+  ],
+  "secondary_outcome_measures": [
+    { "measure": "Distant Metastasis-Free Survival", "time_frame": "Up to 5 years" },
+    { "measure": "Safety and Tolerability", "time_frame": "Throughout treatment" }
+  ],
+  "eligibility": {
+    "criteria": "Inclusion Criteria:\n- Histologically confirmed melanoma\n- Complete surgical resection\n- ECOG performance status 0-1\n\nExclusion Criteria:\n- Active autoimmune disease\n- Prior anti-PD-1 therapy",
+    "gender": "All",
+    "minimum_age": "18 Years",
+    "maximum_age": "N/A"
+  },
+  "arms": [
+    {
+      "label": "Pembrolizumab",
+      "type": "Experimental",
+      "description": "Pembrolizumab 200 mg IV every 3 weeks",
+      "interventions": ["Pembrolizumab"]
+    },
+    {
+      "label": "Placebo",
+      "type": "Placebo Comparator",
+      "description": "Matching placebo IV every 3 weeks",
+      "interventions": ["Placebo"]
+    }
+  ],
+  "sites": [
+    {
+      "facility": "Memorial Sloan Kettering Cancer Center",
+      "city": "New York",
+      "country": "United States",
+      "status": "Recruiting"
+    },
+    {
+      "facility": "Charité Universitätsmedizin Berlin",
+      "city": "Berlin",
+      "country": "Germany",
+      "status": "Recruiting"
+    }
+  ],
+  "linked_publications": [
+    {
+      "pmid": "34567890",
+      "title": "Initial safety and pharmacokinetics of pembrolizumab in advanced melanoma",
+      "journal": "New England Journal of Medicine",
+      "year": "2024"
+    }
+  ]
+}
