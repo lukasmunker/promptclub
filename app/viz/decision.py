@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import Decision, PreferVisualization
+from app.viz.utils.mermaid import is_valid_iso_date
 
 __all__ = ["should_visualize", "MAX_TRIALS_IN_GANTT"]
 
@@ -204,15 +205,22 @@ def _decide_compare_trials(
     if num < 2:
         return Decision.skip("nothing to compare with fewer than 2 trials")
 
-    # Need at least start and primary completion dates for a gantt to make sense.
+    # Need at least start and primary completion dates for a gantt to make
+    # sense — and they must be valid ISO dates because the gantt recipe
+    # filters with the same strict check. A truthy-only check here would let
+    # year-only or year-month dates through, the recipe would drop them, and
+    # we'd end up with a 1-trial "comparison" gantt (or an empty placeholder).
     datable = [
-        t for t in trials if t.get("start_date") and t.get("primary_completion_date")
+        t
+        for t in trials
+        if is_valid_iso_date(t.get("start_date"))
+        and is_valid_iso_date(t.get("primary_completion_date"))
     ]
     if len(datable) < 2:
-        # Fall back to cards if dates are missing
+        # Fall back to cards if not enough trials have ISO dates
         return Decision.use(
             "sponsor_pipeline_cards",
-            "insufficient date data for gantt, using cards",
+            f"only {len(datable)} trial(s) with valid ISO dates, using cards",
         )
 
     if num > MAX_TRIALS_IN_GANTT:
