@@ -650,3 +650,47 @@ def test_concept_card_renders_with_extended_context():
 def test_concept_card_handles_minimal_input():
     payload = concept_card.build({"term": "Phase 3"}, sources=[])
     assert "Phase 3" in payload.raw
+
+
+from app.viz.recipes import single_entity_card
+
+
+def test_single_entity_card_renders_a_trial():
+    data = {
+        "kind": "trial",
+        "title": "NCT01234567",
+        "subtitle": "A Phase 3 study of pembrolizumab in NSCLC",
+        "facts": [
+            ("Phase", "3"),
+            ("Status", "Recruiting"),
+            ("Sponsor", "Merck"),
+            ("Enrollment", "2,500"),
+        ],
+    }
+    payload = single_entity_card.build(data, sources=[])
+    assert payload.recipe == "single_entity_card"
+    assert "NCT01234567" in payload.raw
+    assert "Phase" in payload.raw
+    assert "Recruiting" in payload.raw
+    assert "Merck" in payload.raw
+
+
+def test_single_entity_card_renders_a_drug():
+    data = {
+        "kind": "drug",
+        "title": "Pembrolizumab",
+        "subtitle": "PD-1 inhibitor",
+        "facts": [
+            ("Class", "Monoclonal antibody"),
+            ("Approval", "FDA approved 2014"),
+        ],
+    }
+    payload = single_entity_card.build(data, sources=[])
+    assert "Pembrolizumab" in payload.raw
+    assert "PD-1 inhibitor" in payload.raw
+
+
+def test_single_entity_card_handles_no_facts():
+    data = {"kind": "trial", "title": "NCT00000000"}
+    payload = single_entity_card.build(data, sources=[])
+    assert "NCT00000000" in payload.raw
