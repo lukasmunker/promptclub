@@ -13,6 +13,15 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.theme import (
+    BADGE_MUTED,
+    BADGE_NCT,
+    BADGE_PMID,
+    CARD_STYLE_BLOCK,
+    CARD_STYLE_INLINE,
+    CARD_WRAPPER,
+    PILL_PHASE,
+)
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
@@ -38,10 +47,13 @@ def build(
     footer_html = _render_more_footer(more, data.get("search_url")) if more > 0 else ""
 
     raw = (
-        f'<div class="grid gap-3 p-4 font-sans text-gray-900">\n'
-        f'{cards_html}\n'
-        f'{footer_html}'
-        f'</div>'
+        f"{CARD_STYLE_BLOCK}\n"
+        f'<div class="{CARD_WRAPPER}" style="{CARD_STYLE_INLINE}">\n'
+        f'<div class="grid gap-3">\n'
+        f"{cards_html}\n"
+        f"{footer_html}"
+        f"</div>\n"
+        f"</div>"
     )
 
     assert_safe_html(raw)
@@ -75,9 +87,7 @@ def _render_card(hit: dict[str, Any]) -> str:
 
     phase = hit.get("phase")
     phase_pill = (
-        f'<span class="inline-flex items-center text-xs px-2 py-0.5 rounded '
-        f'bg-amber-50 text-amber-700 border border-amber-200">'
-        f'{escape_html(phase)}</span>'
+        f'<span class="{PILL_PHASE}">{escape_html(phase)}</span>'
         if phase
         else ""
     )
@@ -125,21 +135,15 @@ def _id_badge(hit: dict[str, Any]) -> str:
         href = f"https://clinicaltrials.gov/study/{escape_html(nct)}"
         return (
             f'<a href="{href}" target="_blank" rel="noopener" '
-            f'class="font-mono text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 '
-            f'border border-blue-200 hover:bg-blue-100">{escape_html(nct)}</a>'
+            f'class="{BADGE_NCT}">{escape_html(nct)}</a>'
         )
     if pmid:
         href = f"https://pubmed.ncbi.nlm.nih.gov/{escape_html(pmid)}/"
         return (
             f'<a href="{href}" target="_blank" rel="noopener" '
-            f'class="font-mono text-xs px-2 py-0.5 rounded bg-emerald-50 '
-            f'text-emerald-700 border border-emerald-200 hover:bg-emerald-100">'
-            f"PMID {escape_html(pmid)}</a>"
+            f'class="{BADGE_PMID}">PMID {escape_html(pmid)}</a>'
         )
-    return (
-        '<span class="font-mono text-xs px-2 py-0.5 rounded bg-gray-100 '
-        'text-gray-600">(no id)</span>'
-    )
+    return f'<span class="{BADGE_MUTED}">(no id)</span>'
 
 
 def _render_more_footer(more: int, search_url: str | None) -> str:

@@ -26,6 +26,21 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.theme import (
+    CARD_STYLE_BLOCK,
+    CARD_STYLE_INLINE,
+    CARD_WRAPPER,
+    HEADER_BORDER,
+    SIGNAL_CARD,
+    SIGNAL_ICON_COLOR,
+    SUBTITLE_STYLE_INLINE,
+    TILE_MUTED,
+    TILE_PRIMARY,
+    TILE_PRIMARY_SOLID,
+    TILE_ROSE,
+    TILE_SECONDARY,
+    TITLE_STYLE_INLINE,
+)
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
@@ -48,10 +63,11 @@ def build(
     stat_tiles = _render_stat_tiles(phase_counts, status_counts, pubs_3yr, fda_count)
     signals_html = _render_signals(signals)
 
-    raw = f"""<div class="p-4 font-sans text-gray-900 space-y-4">
-  <header class="border-b border-gray-200 pb-2">
-    <h2 class="text-base font-semibold">{escape_html(title)}</h2>
-    <p class="text-xs text-gray-500">Source: ClinicalTrials.gov · PubMed · openFDA</p>
+    raw = f"""{CARD_STYLE_BLOCK}
+<div class="{CARD_WRAPPER} space-y-4" style="{CARD_STYLE_INLINE}">
+  <header class="{HEADER_BORDER} pb-2">
+    <h2 class="text-base font-semibold" style="{TITLE_STYLE_INLINE}">{escape_html(title)}</h2>
+    <p class="text-xs text-gray-500" style="{SUBTITLE_STYLE_INLINE}">Source: ClinicalTrials.gov · PubMed · openFDA</p>
   </header>
   {stat_tiles}
   {signals_html}
@@ -84,12 +100,12 @@ def _render_stat_tiles(
 ) -> str:
     """Top row: 6 stat tiles. Phases 1/2/3, recruiting, publications, FDA labels."""
     tiles = [
-        ("Phase 1", phase_counts.get("phase_1"), "blue"),
-        ("Phase 2", phase_counts.get("phase_2"), "blue"),
-        ("Phase 3", phase_counts.get("phase_3"), "blue"),
-        ("Recruiting", status_counts.get("recruiting"), "emerald"),
-        ("Publications (3y)", pubs_3yr, "amber"),
-        ("FDA labels", fda_count, "purple"),
+        ("Phase 1", phase_counts.get("phase_1"), "primary"),
+        ("Phase 2", phase_counts.get("phase_2"), "primary"),
+        ("Phase 3", phase_counts.get("phase_3"), "primary_solid"),
+        ("Recruiting", status_counts.get("recruiting"), "secondary"),
+        ("Publications (3y)", pubs_3yr, "secondary"),
+        ("FDA labels", fda_count, "muted"),
     ]
     rendered = "\n    ".join(_tile(label, value, color) for label, value, color in tiles)
     return f"""<section>
@@ -102,11 +118,12 @@ def _render_stat_tiles(
 
 def _tile(label: str, value: Any, color: str) -> str:
     color_classes = {
-        "blue": "bg-blue-50 text-blue-700 border-blue-200",
-        "emerald": "bg-emerald-50 text-emerald-700 border-emerald-200",
-        "amber": "bg-amber-50 text-amber-700 border-amber-200",
-        "purple": "bg-purple-50 text-purple-700 border-purple-200",
-    }.get(color, "bg-gray-50 text-gray-700 border-gray-200")
+        "primary": TILE_PRIMARY,
+        "primary_solid": TILE_PRIMARY_SOLID,
+        "secondary": TILE_SECONDARY,
+        "rose": TILE_ROSE,
+        "muted": TILE_MUTED,
+    }.get(color, TILE_MUTED)
 
     display_value: str
     if value is None:
@@ -147,8 +164,8 @@ def _render_signals(signals: list[Any]) -> str:
 
 
 def _signal_card(signal: str) -> str:
-    return f"""<li class="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 h-4 w-4 flex-shrink-0">
+    return f"""<li class="{SIGNAL_CARD}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="mt-0.5 h-4 w-4 flex-shrink-0 {SIGNAL_ICON_COLOR}">
           <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
         </svg>
         <span>{escape_html(signal)}</span>
