@@ -8,6 +8,8 @@ from app.adapters.opentargets import OpenTargetsAdapter
 from app.adapters.pubmed import PubMedAdapter
 from app.adapters.vertex_google_search import VertexGoogleSearchAdapter
 from app.models import ComparisonResponse, Citation
+from app.services.llm_orchestration import LLMToolOrchestrator
+from app.settings import settings
 
 
 class Orchestrator:
@@ -17,6 +19,7 @@ class Orchestrator:
         self.ot = OpenTargetsAdapter()
         self.fda = OpenFDAAdapter()
         self.web = VertexGoogleSearchAdapter()
+        self.llm = LLMToolOrchestrator(self)
 
     @staticmethod
     def dedupe_citations(citations: list[Citation]) -> list[Citation]:
@@ -38,56 +41,98 @@ class Orchestrator:
         status: str | None = None,
         include_web_context: bool = False,
     ) -> ComparisonResponse:
-        trials = await self.ct.search_trials(
-            disease_query=disease_query,
-            page_size=page_size,
-            phase=phase,
-            sponsor=sponsor,
-            status=status,
-        )
+        trials: list = []
+        citations: list[Citation] = []
+        limitations = [
+            "PubMed linkage is strongest when the abstract or metadata explicitly includes an NCT ID.",
+            "Open Targets disease resolution is best-effort and may return multiple ontology candidates.",
+            "Web grounding is descriptive context only and should not override official structured sources.",
+            "No speculative recommendations or forward-looking strategic claims should be made from these tools.",
+        ]
+        warnings: list[str] = []
+
+        try:
+            trials = await asyncio.wait_for(
+                self.ct.search_trials(
+                    disease_query=disease_query,
+                    page_size=page_size,
+                    phase=phase,
+                    sponsor=sponsor,
+                    status=status,
+                ),
+                timeout=settings.clinical_trials_search_timeout_seconds,
+            )
+        except Exception as exc:
+            warnings.append(f"ClinicalTrials.gov search unavailable: {str(exc)}")
 
         publications = []
-        citations: list[Citation] = []
+        publication_tasks = []
 
-        for trial in trials[:5]:
+        for trial in trials[: settings.max_trials_to_enrich_with_publications]:
             citations.extend(trial.citations)
             if trial.nct_id:
-                pubs = await self.pubmed.get_publications_for_trial(trial.nct_id, page_size=3)
-                publications.extend(pubs)
+                publication_tasks.append(
+                    self._get_trial_publications_with_timeout(trial.nct_id, page_size=3)
+                )
+
+        if publication_tasks:
+            publication_batches = await asyncio.gather(*publication_tasks, return_exceptions=True)
+            for batch in publication_batches:
+                if isinstance(batch, Exception):
+                    continue
+                publications.extend(batch)
 
         for pub in publications:
             citations.extend(pub.citations)
 
         web_context = []
         if include_web_context:
-            web_context = await self.web.search_context(
+            web_context = await self.web_context(
                 f"{disease_query} oncology clinical trial landscape"
             )
             for row in web_context:
                 citations.extend(row.citations)
 
+        summary = (
+            f"Found {len(trials)} ClinicalTrials.gov records for '{disease_query}' "
+            f"and {len(publications)} linked PubMed records."
+        )
+        if warnings:
+            summary = f"{summary} Warnings: {' | '.join(warnings)}"
+
         return ComparisonResponse(
-            summary=(
-                f"Found {len(trials)} ClinicalTrials.gov records for '{disease_query}' "
-                f"and {len(publications)} linked PubMed records."
-            ),
+            summary=summary,
             trials=trials,
             publications=publications,
             web_context=web_context,
-            limitations=[
-                "PubMed linkage is strongest when the abstract or metadata explicitly includes an NCT ID.",
-                "Open Targets disease resolution is best-effort and may return multiple ontology candidates.",
-                "Web grounding is descriptive context only and should not override official structured sources.",
-                "No speculative recommendations or forward-looking strategic claims should be made from these tools.",
-            ],
+            limitations=limitations + warnings,
             citations=self.dedupe_citations(citations),
         )
+
+    async def _get_trial_publications_with_timeout(
+        self,
+        nct_id: str,
+        page_size: int = 3,
+    ):
+        try:
+            return await asyncio.wait_for(
+                self.pubmed.get_publications_for_trial(nct_id, page_size=page_size),
+                timeout=settings.per_trial_publication_lookup_timeout_seconds,
+            )
+        except Exception:
+            return []
 
     async def resolve_disease(self, query: str, page_size: int = 5):
         return await self.ot.resolve_disease(query=query, page_size=page_size)
 
     async def get_trial_details(self, nct_id: str):
-        return await self.ct.get_trial(nct_id)
+        try:
+            return await asyncio.wait_for(
+                self.ct.get_trial(nct_id),
+                timeout=settings.clinical_trial_details_timeout_seconds,
+            )
+        except Exception:
+            return None
 
     async def search_publications(self, query: str, page_size: int = 10):
         return await self.pubmed.search_publications(query=query, page_size=page_size)
@@ -99,7 +144,13 @@ class Orchestrator:
         return await self.fda.search_regulatory_context(drug_name=drug_name, limit=5)
 
     async def web_context(self, query: str):
-        return await self.web.search_context(query)
+        try:
+            return await asyncio.wait_for(
+                self.web.search_context(query),
+                timeout=settings.web_context_timeout_seconds,
+            )
+        except Exception:
+            return []
 
     async def test_sources(self, sample_query: str = "melanoma"):
         return [
@@ -225,3 +276,6 @@ class Orchestrator:
                 {"sponsor": s, "trial_count": c} for s, c in sorted_sponsors
             ],
         }
+
+    async def answer_clinical_question(self, question: str) -> dict:
+        return await self.llm.answer_question(question)

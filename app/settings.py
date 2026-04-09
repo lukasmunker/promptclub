@@ -16,6 +16,23 @@ class Settings(BaseSettings):
     vertex_gemini_model: str = "gemini-2.5-flash"
     enable_vertex_web_search: bool = True
 
+    openai_api_key: str | None = None
+    openai_base_url: str = "https://api.openai.com/v1"
+    enable_llm_tool_orchestration: bool = True
+    openai_orchestrator_model: str = "gpt-5.4"
+    openai_orchestrator_reasoning_effort: str = "medium"
+    openai_orchestrator_max_steps: int = 6
+    openai_orchestrator_max_output_tokens: int = 1800
+    openai_orchestrator_timeout_seconds: int = 60
+
+    answer_clinical_question_timeout_seconds: int = 28
+    search_trials_total_timeout_seconds: int = 24
+    clinical_trials_search_timeout_seconds: int = 12
+    clinical_trial_details_timeout_seconds: int = 12
+    web_context_timeout_seconds: int = 20
+    max_trials_to_enrich_with_publications: int = 5
+    per_trial_publication_lookup_timeout_seconds: int = 8
+
     public_base_url: str | None = None
 
     model_config = SettingsConfigDict(

@@ -47,7 +47,7 @@ def test_build_citation_layer():
     )
 
     assert layer["style"] == "chatgpt_markdown"
-    assert layer["display_style"] == "chatgpt_hover_card"
+    assert layer["display_style"] == "inline_references_only"
     assert len(layer["references"]) == 1
     assert layer["references"][0]["marker"] == "[1]"
     assert layer["references"][0]["markdown_marker"] == "[[1]](https://pubmed.ncbi.nlm.nih.gov/12345/)"
@@ -56,14 +56,22 @@ def test_build_citation_layer():
     assert layer["references"][0]["hover_card"]["source"] == "PubMed"
     assert layer["references"][0]["hover_card"]["display_url"] == "pubmed.ncbi.nlm.nih.gov/12345"
     assert layer["numbering"]["client_should_renumber"] is True
-    assert layer["sources_panel"]["style"] == "chatgpt_sources_drawer"
-    assert layer["sources_panel"]["button"]["label"] == "Sources"
-    assert layer["sources_panel"]["button"]["count"] == 1
-    assert layer["sources_panel"]["panel"]["placement"] == "right"
-    assert layer["sources_panel"]["panel"]["items"][0]["title"] == "Example paper"
-    assert layer["sources_panel"]["panel"]["items"][0]["citation_key"].startswith("cite_")
+    assert "sources_panel" not in layer
     assert "html" not in layer
     assert "markdown" not in layer
+
+
+def test_build_citation_layer_uses_response_local_keys():
+    layer_a = build_citation_layer(
+        [Citation(source="PubMed", id="12345", url="https://pubmed.ncbi.nlm.nih.gov/12345/")]
+    )
+    layer_b = build_citation_layer(
+        [Citation(source="PubMed", id="12345", url="https://pubmed.ncbi.nlm.nih.gov/12345/")]
+    )
+
+    assert layer_a["references"][0]["citation_key"].startswith("cite_")
+    assert layer_b["references"][0]["citation_key"].startswith("cite_")
+    assert layer_a["references"][0]["citation_key"] != layer_b["references"][0]["citation_key"]
 
 
 def test_attach_citation_layer_fails_softly_for_empty_citations():
@@ -82,8 +90,8 @@ def test_attach_citation_layer_adds_structured_sources_panel_only():
 
     result = attach_citation_layer(payload, [citation])
 
-    assert "sources_panel" in result
-    assert result["sources_panel"]["button"]["count"] == 1
+    assert "citation_layer" in result
+    assert "sources_panel" not in result
     assert "citations_markdown" not in result
     assert "citations_html" not in result
     assert "sources_panel_html" not in result

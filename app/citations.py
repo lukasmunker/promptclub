@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from hashlib import sha1
+from secrets import token_hex
 from typing import Any
 from urllib.parse import urlparse
 
@@ -9,9 +9,10 @@ from app.utils import compact_whitespace
 
 
 def build_citation_layer(citations: Iterable[Any]) -> dict[str, Any]:
-    """Build a presentation-only citation layer for chat clients."""
+    """Build a lightweight citation layer without the separate sources drawer UI."""
     references: list[dict[str, Any]] = []
     seen: set[tuple[str | None, str | None, str | None, str | None]] = set()
+    layer_id = token_hex(4)
 
     for citation in citations or []:
         source = _field(citation, "source") or "Source"
@@ -29,7 +30,7 @@ def build_citation_layer(citations: Iterable[Any]) -> dict[str, Any]:
         chatgpt_marker = f"[{index}]"
         markdown_marker = f"[{chatgpt_marker}]({url})" if url else chatgpt_marker
         hover_card = _hover_card(source, title, citation_id, url, label)
-        citation_key = _citation_key(source, citation_id, url, title)
+        citation_key = f"cite_{layer_id}_{index}"
 
         references.append(
             {
@@ -47,16 +48,13 @@ def build_citation_layer(citations: Iterable[Any]) -> dict[str, Any]:
             }
         )
 
-    sources_panel = _sources_panel(references)
     return {
         "style": "chatgpt_markdown",
-        "display_style": "chatgpt_hover_card",
+        "display_style": "inline_references_only",
         "render_hints": {
-            "preferred": "hover_card",
+            "preferred": "inline_reference",
             "fallback": "markdown_link",
             "marker_shape": "inline_numbered_bracket",
-            "sources_panel": "bottom_button_right_drawer",
-            "answer_placement": "append_sources_to_message_footer",
             "client_should_renumber": True,
         },
         "numbering": {
@@ -65,7 +63,6 @@ def build_citation_layer(citations: Iterable[Any]) -> dict[str, Any]:
             "dedupe_key": "citation_key",
         },
         "references": references,
-        "sources_panel": sources_panel,
     }
 
 
@@ -81,7 +78,6 @@ def attach_citation_layer(
 
         enriched = dict(payload)
         enriched["citation_layer"] = layer
-        enriched["sources_panel"] = layer["sources_panel"]
         return enriched
     except Exception:
         return payload
@@ -159,52 +155,3 @@ def _display_url(url: str | None) -> str | None:
     path = parsed.path.rstrip("/")
     return f"{parsed.netloc}{path}" if path else parsed.netloc
 
-
-def _citation_key(
-    source: str,
-    citation_id: str | None,
-    url: str | None,
-    title: str | None,
-) -> str:
-    raw = "|".join([source or "", citation_id or "", url or "", title or ""])
-    return f"cite_{sha1(raw.encode('utf-8')).hexdigest()[:12]}"
-
-
-def _sources_panel(references: list[dict[str, Any]]) -> dict[str, Any]:
-    items = [_source_panel_item(ref) for ref in references]
-    return {
-        "style": "chatgpt_sources_drawer",
-        "placement": "message_footer",
-        "button": {
-            "label": "Sources",
-            "count": len(items),
-            "aria_label": f"Open {len(items)} sources",
-            "placement": "message_footer",
-        },
-        "panel": {
-            "title": "Sources",
-            "placement": "right",
-            "items": items,
-        },
-        "format": {
-            "item_title": "title",
-            "item_subtitle": "subtitle",
-            "item_url": "display_url",
-            "dedupe_key": "citation_key",
-        },
-    }
-
-
-def _source_panel_item(ref: dict[str, Any]) -> dict[str, Any]:
-    hover_card = ref["hover_card"]
-    return {
-        "index": ref["index"],
-        "marker": ref["marker"],
-        "citation_key": ref["citation_key"],
-        "title": hover_card["title"],
-        "source": hover_card["source"],
-        "id": hover_card["id"],
-        "url": hover_card["url"],
-        "display_url": hover_card["display_url"],
-        "subtitle": hover_card["subtitle"],
-    }

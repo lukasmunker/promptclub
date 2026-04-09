@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -21,6 +22,7 @@ You have access to structured data from ClinicalTrials.gov, PubMed, Open Targets
 and a web search grounding service.
 
 ROUTING RULES — choose the right tool for the question:
+- For open-ended or multi-step oncology intelligence questions, prefer answer_clinical_question
 - "Find trials for [disease]" → search_trials
 - "Compare NCT123 vs NCT456" or "side-by-side comparison" → build_trial_comparison
 - "How big is the [disease] landscape?" or "how many trials exist?" → analyze_indication_landscape
@@ -44,6 +46,35 @@ GUARDRAILS:
 )
 
 
+def _error_text(exc: Exception) -> str:
+    return str(exc).strip() or exc.__class__.__name__
+
+
+@mcp.tool()
+async def answer_clinical_question(question: str) -> dict[str, Any]:
+    """
+    Answer an open-ended oncology intelligence question by letting an internal GPT-5.4 orchestrator
+    choose and call the existing evidence tools.
+
+    USE THIS WHEN: The user asks a broad, multi-step, comparative, or synthesis-heavy question
+    that may require several data sources. This path keeps the current deterministic tools in place
+    and falls back to them automatically if OpenAI orchestration is unavailable.
+    """
+    try:
+        result = await asyncio.wait_for(
+            orchestrator.answer_clinical_question(question),
+            timeout=settings.answer_clinical_question_timeout_seconds,
+        )
+        citations = result.pop("_citations", [])
+        return attach_citation_layer(result, citations)
+    except Exception as exc:
+        return {
+            "mode": "error",
+            "answer": "Clinical question orchestration is temporarily unavailable.",
+            "error": _error_text(exc),
+        }
+
+
 @mcp.tool()
 async def search_trials(
     disease_query: str,
@@ -65,14 +96,27 @@ async def search_trials(
     Medical abbreviations (NSCLC, HCC, TNBC) and trade names (Keytruda→pembrolizumab) are
     automatically expanded. Returns full trial records with linked PMIDs and citations.
     """
-    result = await orchestrator.search_trials_with_publications(
-        disease_query=disease_query,
-        phase=phase,
-        sponsor=sponsor,
-        status=status,
-        page_size=page_size,
-    )
-    return attach_citation_layer(result.model_dump(), result.citations)
+    try:
+        result = await asyncio.wait_for(
+            orchestrator.search_trials_with_publications(
+                disease_query=disease_query,
+                phase=phase,
+                sponsor=sponsor,
+                status=status,
+                page_size=page_size,
+            ),
+            timeout=settings.search_trials_total_timeout_seconds,
+        )
+        return attach_citation_layer(result.model_dump(), result.citations)
+    except Exception as exc:
+        return {
+            "summary": "ClinicalTrials.gov search failed.",
+            "trials": [],
+            "publications": [],
+            "web_context": [],
+            "limitations": [_error_text(exc)],
+            "error": _error_text(exc),
+        }
 
 
 @mcp.tool()
@@ -84,13 +128,16 @@ async def get_trial_details(nct_id: str) -> dict[str, Any]:
     or wants full details (endpoints, eligibility, locations, linked publications) for one trial.
     Returns complete structured data including inclusion/exclusion criteria and linked PMIDs.
     """
-    record = await orchestrator.get_trial_details(nct_id)
-    if not record:
-        return {"found": False, "nct_id": nct_id}
-    return attach_citation_layer(
-        {"found": True, "trial": record.model_dump()},
-        record.citations,
-    )
+    try:
+        record = await orchestrator.get_trial_details(nct_id)
+        if not record:
+            return {"found": False, "nct_id": nct_id}
+        return attach_citation_layer(
+            {"found": True, "trial": record.model_dump()},
+            record.citations,
+        )
+    except Exception as exc:
+        return {"found": False, "nct_id": nct_id, "error": _error_text(exc)}
 
 
 @mcp.tool()
@@ -103,11 +150,14 @@ async def search_publications(query: str, page_size: int = 10) -> dict[str, Any]
     (e.g. '"NCT04516746"' to find publications from a specific trial).
     Returns title, abstract, authors, journal, pub date, and linked trial IDs (NCT numbers).
     """
-    pubs = await orchestrator.search_publications(query=query, page_size=page_size)
-    return attach_citation_layer(
-        {"count": len(pubs), "results": [p.model_dump() for p in pubs]},
-        citations_from_rows(pubs),
-    )
+    try:
+        pubs = await orchestrator.search_publications(query=query, page_size=page_size)
+        return attach_citation_layer(
+            {"count": len(pubs), "results": [p.model_dump() for p in pubs]},
+            citations_from_rows(pubs),
+        )
+    except Exception as exc:
+        return {"count": 0, "results": [], "error": _error_text(exc)}
 
 
 @mcp.tool()
@@ -120,11 +170,14 @@ async def get_target_context(disease_id: str) -> dict[str, Any]:
     If you only have a disease name, call resolve_disease first to get the ID.
     Returns ranked targets with association scores from genetics, literature, and pathway data.
     """
-    rows = await orchestrator.get_target_context(disease_id=disease_id)
-    return attach_citation_layer(
-        {"count": len(rows), "results": [r.model_dump() for r in rows]},
-        citations_from_rows(rows),
-    )
+    try:
+        rows = await orchestrator.get_target_context(disease_id=disease_id)
+        return attach_citation_layer(
+            {"count": len(rows), "results": [r.model_dump() for r in rows]},
+            citations_from_rows(rows),
+        )
+    except Exception as exc:
+        return {"count": 0, "results": [], "error": _error_text(exc)}
 
 
 @mcp.tool()
@@ -137,11 +190,14 @@ async def get_regulatory_context(drug_name: str) -> dict[str, Any]:
     generic/INN names (pembrolizumab). Returns structured label data with indications_and_usage,
     active ingredients, application numbers, and manufacturer.
     """
-    rows = await orchestrator.get_regulatory_context(drug_name=drug_name)
-    return attach_citation_layer(
-        {"count": len(rows), "results": [r.model_dump() for r in rows]},
-        citations_from_rows(rows),
-    )
+    try:
+        rows = await orchestrator.get_regulatory_context(drug_name=drug_name)
+        return attach_citation_layer(
+            {"count": len(rows), "results": [r.model_dump() for r in rows]},
+            citations_from_rows(rows),
+        )
+    except Exception as exc:
+        return {"count": 0, "results": [], "error": _error_text(exc)}
 
 
 @mcp.tool()
@@ -154,11 +210,14 @@ async def resolve_disease(query: str, page_size: int = 5) -> dict[str, Any]:
     matched EFO IDs, canonical names, and descriptions. Always call this before
     get_target_context if you only have a free-text disease name.
     """
-    rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
-    return attach_citation_layer(
-        {"count": len(rows), "results": [r.model_dump() for r in rows]},
-        citations_from_rows(rows),
-    )
+    try:
+        rows = await orchestrator.resolve_disease(query=query, page_size=page_size)
+        return attach_citation_layer(
+            {"count": len(rows), "results": [r.model_dump() for r in rows]},
+            citations_from_rows(rows),
+        )
+    except Exception as exc:
+        return {"count": 0, "results": [], "error": _error_text(exc)}
 
 
 @mcp.tool()
@@ -171,11 +230,19 @@ async def web_context_search(query: str) -> dict[str, Any]:
     Complements structured data sources but should NOT override them. Requires GCP credentials
     (returns empty gracefully if unavailable). Always cite the web sources returned.
     """
-    rows = await orchestrator.web_context(query=query)
-    return attach_citation_layer(
-        {"count": len(rows), "results": [r.model_dump() for r in rows]},
-        citations_from_rows(rows),
-    )
+    try:
+        rows = await orchestrator.web_context(query=query)
+        payload = {"count": len(rows), "results": [r.model_dump() for r in rows]}
+        if not rows:
+            payload["warning"] = "Web grounding is temporarily unavailable or returned no results."
+        return attach_citation_layer(payload, citations_from_rows(rows))
+    except Exception as exc:
+        return {
+            "count": 0,
+            "results": [],
+            "warning": "Web grounding is temporarily unavailable.",
+            "error": _error_text(exc),
+        }
 
 
 @mcp.tool()
@@ -186,8 +253,11 @@ async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
     USE THIS WHEN: The user asks if the system is working, wants to verify connectivity,
     or reports that a data source seems down. Returns latency, status, and sample IDs for each source.
     """
-    results = await orchestrator.test_sources(sample_query=sample_query)
-    return {"results": [r.model_dump() for r in results]}
+    try:
+        results = await orchestrator.test_sources(sample_query=sample_query)
+        return {"results": [r.model_dump() for r in results]}
+    except Exception as exc:
+        return {"results": [], "error": _error_text(exc)}
 
 
 @mcp.tool()
@@ -201,7 +271,10 @@ async def build_trial_comparison(nct_ids: list[str]) -> dict[str, Any]:
     Pass a list of NCT IDs — all trials are fetched in parallel for speed.
     Returns full structured records for each trial plus an errors list for any not found.
     """
-    return await orchestrator.build_trial_comparison(nct_ids=nct_ids)
+    try:
+        return await orchestrator.build_trial_comparison(nct_ids=nct_ids)
+    except Exception as exc:
+        return {"count": 0, "trials": [], "errors": [{"error": _error_text(exc)}]}
 
 
 @mcp.tool()
@@ -218,7 +291,18 @@ async def analyze_indication_landscape(
     Returns counts for trials, publications (last 3 years), FDA label records, and disease
     ontology matches. Medical abbreviations (NSCLC, HCC) are automatically expanded.
     """
-    return await orchestrator.analyze_indication_landscape(condition=condition, phase=phase)
+    try:
+        return await orchestrator.analyze_indication_landscape(condition=condition, phase=phase)
+    except Exception as exc:
+        return {
+            "condition": condition,
+            "phase_filter": phase,
+            "clinical_trials_count": 0,
+            "pubmed_publications_3yr": 0,
+            "fda_label_records": 0,
+            "disease_ontology": [],
+            "error": _error_text(exc),
+        }
 
 
 @mcp.tool()
@@ -234,7 +318,18 @@ async def analyze_whitespace(condition: str) -> dict[str, Any]:
     list of identified whitespace signals (e.g. "Few Phase 3 trials — late-stage evidence lacking").
     Medical abbreviations are automatically expanded.
     """
-    return await orchestrator.analyze_whitespace(condition=condition)
+    try:
+        return await orchestrator.analyze_whitespace(condition=condition)
+    except Exception as exc:
+        return {
+            "condition": condition,
+            "trial_counts_by_phase": {},
+            "trial_counts_by_status": {},
+            "pubmed_publications_3yr": 0,
+            "fda_label_records": 0,
+            "identified_whitespace": [],
+            "error": _error_text(exc),
+        }
 
 
 @mcp.tool()
@@ -248,7 +343,16 @@ async def get_sponsor_overview(condition: str, page_size: int = 25) -> dict[str,
     Fetches up to page_size trials and groups them by lead sponsor, sorted by trial count.
     Returns unique sponsor count, total trials sampled, and a ranked sponsor list with counts.
     """
-    return await orchestrator.get_sponsor_overview(condition=condition, page_size=page_size)
+    try:
+        return await orchestrator.get_sponsor_overview(condition=condition, page_size=page_size)
+    except Exception as exc:
+        return {
+            "condition": condition,
+            "total_trials_sampled": 0,
+            "unique_sponsors": 0,
+            "sponsor_trial_counts": [],
+            "error": _error_text(exc),
+        }
 
 
 # Create MCP ASGI app — triggers lazy session_manager initialization.

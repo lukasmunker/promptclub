@@ -9,7 +9,7 @@ from app.adapters.pubmed import PubMedAdapter
 @pytest.mark.asyncio
 async def test_clinicaltrials_v2_smoke():
     adapter = ClinicalTrialsV2Adapter()
-    results = await adapter.search_trials(condition="melanoma", term="melanoma", page_size=2)
+    results = await adapter.search_trials(disease_query="melanoma", page_size=2)
     assert isinstance(results, list)
 
 
