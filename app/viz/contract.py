@@ -1,4 +1,4 @@
-"""Pydantic models defining the MCP Yallah → LibreChat envelope contract.
+"""Pydantic models defining the Pharmafuse MCP → LibreChat envelope contract.
 
 These are the types every MCP tool response must conform to when it uses
 app.viz. See docs/envelope-contract.md for the full spec.

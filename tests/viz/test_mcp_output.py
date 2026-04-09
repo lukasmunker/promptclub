@@ -48,18 +48,34 @@ def _html_envelope(raw: str = "<div>hello</div>") -> dict:
     }
 
 
-def test_html_envelope_emits_artifact_block_verbatim():
+def test_html_envelope_starts_with_action_required_preamble():
+    """The tool result must start with the in-band instruction so the LLM
+    reads "paste this verbatim" before the artifact block itself."""
     env = _html_envelope()
     text = envelope_to_llm_text(env)
+    assert text.startswith("ACTION REQUIRED")
+    assert "copy the :::artifact" in text
+    assert "VERBATIM" in text
 
-    assert text.startswith(":::artifact{")
+
+def test_html_envelope_contains_artifact_block_after_preamble():
+    env = _html_envelope()
+    text = envelope_to_llm_text(env)
+    assert ":::artifact{" in text
     assert 'identifier="trial-search-results-melanoma-2026-04-09"' in text
     assert 'type="html"' in text
     assert 'title="Phase 3 Melanoma Trials"' in text
-    # Raw HTML body appears between the opening attrs and the closing :::
     assert "<div>hello</div>" in text
-    # Block closes with standalone :::
-    assert "\n:::\n" in text or text.rstrip().endswith(":::")
+    # Must still have a closing fence
+    assert "\n:::\n" in text or ":::\n\nSources" in text
+
+
+def test_preamble_precedes_artifact_block():
+    """Preamble must come BEFORE the artifact block."""
+    text = envelope_to_llm_text(_html_envelope())
+    preamble_idx = text.index("ACTION REQUIRED")
+    artifact_idx = text.index(":::artifact{")
+    assert preamble_idx < artifact_idx
 
 
 def test_html_envelope_includes_sources_footer():
@@ -135,7 +151,8 @@ def test_mermaid_envelope_emits_artifact_block_without_code_fence():
         "sources": [],
     }
     text = envelope_to_llm_text(env)
-    assert text.startswith(":::artifact{")
+    assert text.startswith("ACTION REQUIRED")
+    assert ":::artifact{" in text
     assert 'type="mermaid"' in text
     assert "gantt\n    dateFormat" in text
     assert "```mermaid" not in text
