@@ -342,17 +342,13 @@ async def get_known_drugs_for_target(ensembl_id: str, page_size: int = 25) -> st
             query_hint=f"ensembl_id={ensembl_id}",
         )
         return envelope_to_llm_text(envelope)
-    # No recipe yet for this tool — build a minimal envelope so the LLM
-    # receives the standard ``[NO VISUALIZATION]`` wrapper instead of a
-    # raw dict it would have to JSON-parse.
-    envelope = {
-        "render_hint": (
-            "Answer as plain text based on data. Cite sources using "
-            "NCT/PMID IDs from the 'sources' field. No forward-looking statements."
-        ),
-        "data": {"count": len(rows), "results": [lean_dump(r) for r in rows]},
-        "sources": [],
-    }
+    # Tool has no recipe in decision.py — fallback dispatcher routes to info_card.
+    envelope = build_response(
+        tool_name="get_known_drugs_for_target",
+        data={"count": len(rows), "results": [lean_dump(r) for r in rows]},
+        sources=[],
+        query_hint=f"ensembl_id={ensembl_id}",
+    )
     return envelope_to_llm_text(
         attach_citation_layer(envelope, citations_from_rows(rows))
     )
@@ -461,14 +457,12 @@ async def test_data_sources(sample_query: str = "melanoma") -> str:
     or reports that a data source seems down. Returns latency, status, and sample IDs for each source.
     """
     results = await orchestrator.test_sources(sample_query=sample_query)
-    envelope = {
-        "render_hint": (
-            "Answer as plain text based on data. Cite sources using "
-            "NCT/PMID IDs from the 'sources' field. No forward-looking statements."
-        ),
-        "data": {"results": [lean_dump(r) for r in results]},
-        "sources": [],
-    }
+    envelope = build_response(
+        tool_name="test_data_sources",
+        data={"results": [lean_dump(r) for r in results]},
+        sources=[],
+        query_hint="diagnostic test data sources",
+    )
     return envelope_to_llm_text(envelope)
 
 
