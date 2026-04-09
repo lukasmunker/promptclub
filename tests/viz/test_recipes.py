@@ -14,21 +14,22 @@ from app.viz.recipes import (
     trial_timeline_gantt,
     whitespace_card,
 )
-from app.viz.utils.html import assert_safe_html
 from app.viz.utils.mermaid import safe_label
 
 
-# --- trial_search_results (HTML) -------------------------------------------
+# --- trial_search_results (Markdown, inline) -------------------------------
 
 
 def test_trial_search_results_basic_shape(search_melanoma_phase3):
     payload = trial_search_results.build(search_melanoma_phase3)
     assert isinstance(payload, UiPayload)
-    assert payload.artifact.type == "text/html"
+    assert payload.artifact.type == "text/markdown"
     assert payload.recipe == "trial_search_results"
     assert payload.raw is not None
     assert payload.blueprint is None
     assert payload.components is None
+    # Markdown table header present
+    assert "| NCT | Phase | Status |" in payload.raw
 
 
 def test_trial_search_results_includes_all_nct_ids(search_melanoma_phase3):
@@ -37,34 +38,37 @@ def test_trial_search_results_includes_all_nct_ids(search_melanoma_phase3):
         assert hit["nct_id"] in payload.raw
 
 
-def test_trial_search_results_is_xss_safe(search_melanoma_phase3):
-    payload = trial_search_results.build(search_melanoma_phase3)
-    assert_safe_html(payload.raw)
+def test_trial_search_results_handles_malicious_content_inline():
+    """Inline markdown renders raw HTML as escaped text (ReactMarkdown without
+    rehype-raw) — so a literal <script> tag shows up as plain text in the chat,
+    not as an executable script. We still escape pipes in cell content so the
+    table layout isn't broken.
 
-
-def test_trial_search_results_escapes_malicious_title():
+    Note: the trial table has no `title` column (trials are identified by NCT),
+    so we put the malicious content in `sponsor` which IS rendered.
+    """
     data = {
         "query": "evil",
         "results": [
             {
                 "nct_id": "NCT01",
-                "title": '<script>alert("xss")</script>',
                 "phase": "Phase 3",
-                "sponsor": "<img src=x onerror=alert(1)>",
-            }
+                "sponsor": 'Evil | pipe <script>alert(1)</script>',
+            },
+            {
+                "nct_id": "NCT02",
+                "phase": "Phase 3",
+                "sponsor": "Normal Sponsor",
+            },
         ],
-        "total": 1,
+        "total": 2,
     }
     payload = trial_search_results.build(data)
-    # The raw script tag must be escaped — no executable <script> tag present
-    assert "<script>" not in payload.raw
-    # The escaped forms appear as inert text instead
-    assert "&lt;script&gt;" in payload.raw
-    assert "&lt;img" in payload.raw
-    # No unescaped <img tag (which would carry the onerror attribute)
-    assert "<img " not in payload.raw
-    # And the defensive assertion passes
-    assert_safe_html(payload.raw)
+    # Table pipe in sponsor field must be escaped so it doesn't split the cell.
+    assert "Evil \\| pipe" in payload.raw
+    # The literal <script> substring survives into the markdown — LibreChat
+    # will render it as inert text via ReactMarkdown's default HTML escaping.
+    assert "<script>" in payload.raw
 
 
 def test_trial_search_results_caps_at_25_and_shows_more_footer():
@@ -82,6 +86,8 @@ def test_trial_search_results_caps_at_25_and_shows_more_footer():
     assert "15 more" in payload.raw
     assert "NCT0024" in payload.raw  # the 25th hit
     assert "NCT0025" not in payload.raw  # 26th is beyond the cap
+    # Footer links to the full search URL
+    assert "clinicaltrials.gov/search?cond=many" in payload.raw
 
 
 def test_trial_search_results_includes_pmid_links_for_publications():
@@ -97,16 +103,18 @@ def test_trial_search_results_includes_pmid_links_for_publications():
         "total": 1,
     }
     payload = trial_search_results.build(data)
+    # Link in markdown format
     assert "pubmed.ncbi.nlm.nih.gov/12345678" in payload.raw
-    assert "PMID 12345678" in payload.raw
+    # Publication table uses PMID column header
+    assert "| PMID | Title | Journal · Year |" in payload.raw
 
 
-# --- sponsor_pipeline_cards (HTML) -----------------------------------------
+# --- sponsor_pipeline_cards (Markdown, inline) ------------------------------
 
 
 def test_sponsor_pipeline_cards_groups_by_sponsor(compare_trials_many):
     payload = sponsor_pipeline_cards.build(compare_trials_many)
-    assert payload.artifact.type == "text/html"
+    assert payload.artifact.type == "text/markdown"
     # Should contain each unique sponsor name as a section header
     unique_sponsors = {t["sponsor"] for t in compare_trials_many["trials"]}
     for sponsor in unique_sponsors:
@@ -114,25 +122,31 @@ def test_sponsor_pipeline_cards_groups_by_sponsor(compare_trials_many):
 
 
 def test_sponsor_pipeline_cards_is_xss_safe(compare_trials_many):
+    """Kept as a smoke test that building doesn't crash on real-world data."""
     payload = sponsor_pipeline_cards.build(compare_trials_many)
-    assert_safe_html(payload.raw)
+    # Markdown: assert required structural tokens exist
+    assert "| NCT | Trial |" in payload.raw
+    assert payload.raw.startswith("## ")
 
 
 def test_sponsor_pipeline_cards_handles_empty():
     payload = sponsor_pipeline_cards.build({"trials": [], "title": "Empty"})
     assert payload.raw is not None
-    assert_safe_html(payload.raw)
+    assert "## Empty" in payload.raw
 
 
-# --- trial_timeline_gantt (Mermaid) ----------------------------------------
+# --- trial_timeline_gantt (Markdown + mermaid fence, inline) ---------------
 
 
 def test_timeline_gantt_basic(compare_trials_three):
     payload = trial_timeline_gantt.build(compare_trials_three)
-    assert payload.artifact.type == "application/vnd.mermaid"
-    assert payload.raw.startswith("gantt")
+    # Now a text/markdown envelope with a mermaid fence embedded inline
+    assert payload.artifact.type == "text/markdown"
+    assert payload.raw.startswith("## ")
+    assert "```mermaid" in payload.raw
+    assert "gantt" in payload.raw
     assert "dateFormat  YYYY-MM-DD" in payload.raw
-    # All three trials should be present
+    # All three trials should be present inside the fence
     for trial in compare_trials_three["trials"]:
         assert trial["nct_id"] in payload.raw
 
@@ -195,23 +209,23 @@ def test_timeline_gantt_sanitizes_labels():
         ]
     }
     payload = trial_timeline_gantt.build(data)
-    # No unescaped forbidden characters in the gantt body
-    # (we check line-by-line past the title line)
-    lines = payload.raw.split("\n")
-    for line in lines:
-        if line.strip().startswith("title"):
+    # Only look at the mermaid task/section lines inside the fence. Skip the
+    # markdown wrapper (## heading, ```mermaid fence, title/dateFormat/axisFormat).
+    safe_prefixes = ("##", "```", "title", "gantt", "dateFormat", "axisFormat")
+    for line in payload.raw.split("\n"):
+        stripped = line.strip()
+        if not stripped or stripped.startswith(safe_prefixes):
             continue
-        for bad in ('"', ":", "<", ">", "(", ")"):
-            # The "section" keyword and task "active, nct, date, date" syntax
-            # legitimately use colons. Skip those lines.
-            if line.strip().startswith("section"):
-                continue
-            if ":active," in line:
-                # task lines have a legitimate `label :active, nct, d1, d2` — the
-                # colon there is part of the task syntax
-                label_part = line.split(":active,", 1)[0]
-                assert bad not in label_part, f"bad char {bad!r} in label {label_part!r}"
-                continue
+        if stripped.startswith("section"):
+            # The "section X" header's label was already sanitized by safe_label
+            continue
+        if ":active," in line:
+            # Task line: `    Label :active, NCT, start, end`
+            label_part = line.split(":active,", 1)[0]
+            for bad in ('"', ":", "<", ">", "(", ")"):
+                assert bad not in label_part, (
+                    f"bad char {bad!r} in gantt label {label_part!r}"
+                )
 
 
 def test_safe_label_utility_direct():
@@ -354,11 +368,13 @@ def test_build_response_search_with_sources(
     )
     assert "render_hint" in envelope
     assert envelope["ui"]["recipe"] == "trial_search_results"
-    assert envelope["ui"]["artifact"]["type"] == "text/html"
+    assert envelope["ui"]["artifact"]["type"] == "text/markdown"
     assert "raw" in envelope["ui"]
-    # HTML recipes should not include components/blueprint (stripped by exclude_none)
+    # Markdown recipes should not include components/blueprint (stripped by exclude_none)
     assert "components" not in envelope["ui"]
     assert "blueprint" not in envelope["ui"]
+    # render_hint tells the LLM to inline the markdown (not wrap in artifact)
+    assert "verbatim" in envelope["render_hint"].lower()
     # Sources preserved
     assert len(envelope["sources"]) == 1
     assert envelope["sources"][0]["kind"] == "clinicaltrials.gov"
@@ -413,17 +429,20 @@ def test_build_response_compare_trials_gantt(compare_trials_three):
         "compare_trials", compare_trials_three, sources=[]
     )
     assert envelope["ui"]["recipe"] == "trial_timeline_gantt"
-    assert envelope["ui"]["artifact"]["type"] == "application/vnd.mermaid"
-    assert envelope["ui"]["raw"].startswith("gantt")
+    assert envelope["ui"]["artifact"]["type"] == "text/markdown"
+    # Inline markdown wraps the mermaid source in a fence
+    assert envelope["ui"]["raw"].startswith("## ")
+    assert "```mermaid" in envelope["ui"]["raw"]
+    assert "gantt" in envelope["ui"]["raw"]
 
 
 def test_build_response_compare_many_trials_cards(compare_trials_many):
     envelope = build_response(
         "compare_trials", compare_trials_many, sources=[]
     )
-    # 18 trials > 15 cap → should use cards
+    # 18 trials > 15 cap → should use cards (now inline markdown)
     assert envelope["ui"]["recipe"] == "sponsor_pipeline_cards"
-    assert envelope["ui"]["artifact"]["type"] == "text/html"
+    assert envelope["ui"]["artifact"]["type"] == "text/markdown"
 
 
 def test_build_response_trial_details_rich(trial_details_nct01):
@@ -436,7 +455,7 @@ def test_build_response_trial_details_rich(trial_details_nct01):
     assert "components" in envelope["ui"]
 
 
-# --- whitespace_card (HTML) -------------------------------------------------
+# --- whitespace_card (Markdown, inline) -------------------------------------
 
 
 _WHITESPACE_FIXTURE = {
@@ -456,10 +475,14 @@ def test_whitespace_card_basic_shape():
     payload = whitespace_card.build(_WHITESPACE_FIXTURE)
     assert isinstance(payload, UiPayload)
     assert payload.recipe == "whitespace_card"
-    assert payload.artifact.type == "text/html"
+    assert payload.artifact.type == "text/markdown"
     assert payload.raw is not None
     assert payload.blueprint is None
     assert payload.components is None
+    # Markdown heading + metric table present
+    assert payload.raw.startswith("## ")
+    assert "### Activity Overview" in payload.raw
+    assert "### Identified Whitespace Signals" in payload.raw
 
 
 def test_whitespace_card_renders_all_phase_counts():
@@ -473,24 +496,23 @@ def test_whitespace_card_renders_all_signals():
     payload = whitespace_card.build(_WHITESPACE_FIXTURE)
     for signal in _WHITESPACE_FIXTURE["identified_whitespace"]:
         assert signal in payload.raw
+    # Each signal is prefixed with the warning emoji
+    assert payload.raw.count("⚠️") >= 2
 
 
-def test_whitespace_card_is_xss_safe():
-    payload = whitespace_card.build(_WHITESPACE_FIXTURE)
-    assert_safe_html(payload.raw)
-
-
-def test_whitespace_card_escapes_malicious_signal():
+def test_whitespace_card_handles_literal_script_string_inline():
+    """LibreChat's chat markdown renderer does NOT execute raw HTML — a
+    literal <script> string appears as plain text. We don't try to HTML-escape
+    anything; that would just clutter the markdown."""
     data = {
         **_WHITESPACE_FIXTURE,
         "identified_whitespace": ['<script>alert("xss")</script>', "ok signal"],
     }
     payload = whitespace_card.build(data)
-    # No raw script tag
-    assert "<script>" not in payload.raw
-    # But escaped form is present
-    assert "&lt;script&gt;" in payload.raw
-    assert_safe_html(payload.raw)
+    # The script string is in the raw markdown — as literal text, not as a tag.
+    # LibreChat will display it verbatim (no execution, no side effects).
+    assert "<script>" in payload.raw
+    assert "ok signal" in payload.raw
 
 
 def test_whitespace_card_handles_missing_counts():
