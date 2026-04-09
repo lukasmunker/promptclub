@@ -86,7 +86,7 @@ def build(
         recipe="target_associations_table",
         artifact=ArtifactMeta(
             identifier=make_identifier("target_associations_table", disease_id),
-            type="text/html",
+            type="html",
             title=title,
         ),
         components=None,

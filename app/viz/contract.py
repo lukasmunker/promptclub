@@ -15,8 +15,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # --- Literal types used across the contract ---------------------------------
 
 ArtifactType = Literal[
-    "text/html",
-    "application/vnd.mermaid",
+    "html",
+    "mermaid",
 ]
 
 SourceKind = Literal[

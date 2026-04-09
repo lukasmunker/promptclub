@@ -63,7 +63,7 @@ def build(
         recipe="whitespace_card",
         artifact=ArtifactMeta(
             identifier=make_identifier("whitespace_card", condition),
-            type="text/html",
+            type="html",
             title=title,
         ),
         components=None,

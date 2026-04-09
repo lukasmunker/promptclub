@@ -29,7 +29,7 @@ from app.viz.utils.mermaid import safe_label
 def test_trial_search_results_basic_shape(search_melanoma_phase3):
     payload = trial_search_results.build(search_melanoma_phase3)
     assert isinstance(payload, UiPayload)
-    assert payload.artifact.type == "text/html"
+    assert payload.artifact.type == "html"
     assert payload.recipe == "trial_search_results"
     assert payload.raw is not None
     assert payload.blueprint is None
@@ -109,7 +109,7 @@ def test_trial_search_results_includes_pmid_links_for_publications():
 
 def test_sponsor_pipeline_cards_groups_by_sponsor(compare_trials_many):
     payload = sponsor_pipeline_cards.build(compare_trials_many)
-    assert payload.artifact.type == "text/html"
+    assert payload.artifact.type == "html"
     # One section per unique sponsor, each with an <h2> header
     unique_sponsors = {t["sponsor"] for t in compare_trials_many["trials"]}
     for sponsor in unique_sponsors:
@@ -130,7 +130,7 @@ def test_sponsor_pipeline_cards_handles_empty():
 
 def test_timeline_gantt_basic(compare_trials_three):
     payload = trial_timeline_gantt.build(compare_trials_three)
-    assert payload.artifact.type == "application/vnd.mermaid"
+    assert payload.artifact.type == "mermaid"
     # Pure mermaid source — no markdown wrapper, no code fence
     assert payload.raw.startswith("gantt")
     assert "```mermaid" not in payload.raw
@@ -220,7 +220,7 @@ def test_safe_label_utility_direct():
 
 def test_indication_dashboard_basic(indication_landscape_nsclc):
     payload = indication_dashboard.build(indication_landscape_nsclc)
-    assert payload.artifact.type == "text/html"
+    assert payload.artifact.type == "html"
     assert payload.recipe == "indication_dashboard"
     assert payload.raw is not None
     assert payload.blueprint is None
@@ -299,7 +299,7 @@ def test_indication_dashboard_skips_missing_panels():
 
 def test_trial_detail_tabs_basic(trial_details_nct01):
     payload = trial_detail_tabs.build(trial_details_nct01)
-    assert payload.artifact.type == "text/html"
+    assert payload.artifact.type == "html"
     assert payload.recipe == "trial_detail_tabs"
     assert payload.raw is not None
     assert payload.blueprint is None
@@ -369,7 +369,7 @@ def test_target_associations_table_basic():
         ],
     }
     payload = target_associations_table.build(data)
-    assert payload.artifact.type == "text/html"
+    assert payload.artifact.type == "html"
     assert payload.recipe == "target_associations_table"
     assert "<table" in payload.raw
     # Both targets present
@@ -419,7 +419,7 @@ def test_whitespace_card_basic_shape():
     payload = whitespace_card.build(_WHITESPACE_FIXTURE)
     assert isinstance(payload, UiPayload)
     assert payload.recipe == "whitespace_card"
-    assert payload.artifact.type == "text/html"
+    assert payload.artifact.type == "html"
     assert payload.raw is not None
     assert payload.blueprint is None
     assert payload.components is None
@@ -492,14 +492,14 @@ def test_build_response_search_with_sources(
     )
     assert "render_hint" in envelope
     assert envelope["ui"]["recipe"] == "trial_search_results"
-    assert envelope["ui"]["artifact"]["type"] == "text/html"
+    assert envelope["ui"]["artifact"]["type"] == "html"
     assert "raw" in envelope["ui"]
     # HTML recipes should not include components/blueprint (stripped by exclude_none)
     assert "components" not in envelope["ui"]
     assert "blueprint" not in envelope["ui"]
     # render_hint tells the LLM to emit an :::artifact directive
     assert ":::artifact" in envelope["render_hint"]
-    assert "text/html" in envelope["render_hint"]
+    assert "html" in envelope["render_hint"]
     # Sources preserved
     assert len(envelope["sources"]) == 1
     assert envelope["sources"][0]["kind"] == "clinicaltrials.gov"
@@ -509,7 +509,7 @@ def test_build_response_indication_dashboard_is_html(indication_landscape_nsclc)
     envelope = build_response(
         "get_indication_landscape", indication_landscape_nsclc, sources=[]
     )
-    assert envelope["ui"]["artifact"]["type"] == "text/html"
+    assert envelope["ui"]["artifact"]["type"] == "html"
     assert envelope["ui"]["recipe"] == "indication_dashboard"
     assert "raw" in envelope["ui"]
     assert "components" not in envelope["ui"]
@@ -552,7 +552,7 @@ def test_build_response_compare_trials_gantt(compare_trials_three):
         "compare_trials", compare_trials_three, sources=[]
     )
     assert envelope["ui"]["recipe"] == "trial_timeline_gantt"
-    assert envelope["ui"]["artifact"]["type"] == "application/vnd.mermaid"
+    assert envelope["ui"]["artifact"]["type"] == "mermaid"
     # Pure mermaid — starts with the diagram header directly
     assert envelope["ui"]["raw"].startswith("gantt")
     assert "```mermaid" not in envelope["ui"]["raw"]
@@ -564,7 +564,7 @@ def test_build_response_compare_many_trials_cards(compare_trials_many):
     )
     # 18 trials > 15 cap → should use cards
     assert envelope["ui"]["recipe"] == "sponsor_pipeline_cards"
-    assert envelope["ui"]["artifact"]["type"] == "text/html"
+    assert envelope["ui"]["artifact"]["type"] == "html"
 
 
 def test_build_response_trial_details_rich(trial_details_nct01):
@@ -572,7 +572,7 @@ def test_build_response_trial_details_rich(trial_details_nct01):
         "get_trial_details", trial_details_nct01, sources=[]
     )
     assert envelope["ui"]["recipe"] == "trial_detail_tabs"
-    assert envelope["ui"]["artifact"]["type"] == "text/html"
+    assert envelope["ui"]["artifact"]["type"] == "html"
     assert "raw" in envelope["ui"]
     assert "components" not in envelope["ui"]
     assert "blueprint" not in envelope["ui"]

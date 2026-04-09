@@ -125,7 +125,7 @@ def test_search_trials_envelope_from_comparison_response():
     assert "Cite sources" in env["render_hint"]
     assert "No forward-looking" in env["render_hint"]
     assert env["ui"]["recipe"] == "trial_search_results"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "html"
     # Both NCT IDs should appear in the rendered HTML card list
     assert "NCT01234567" in env["ui"]["raw"]
     assert "NCT02345678" in env["ui"]["raw"]
@@ -226,7 +226,7 @@ def test_trial_details_rich_produces_tab_view():
     )
     assert env["ui"]["recipe"] == "trial_detail_tabs"
     # Rebuilt as HTML sections after Sandpack crash — no more React blueprint.
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "html"
     assert "raw" in env["ui"]
     # Section headers from the rich data are present (ampersand HTML-escaped)
     raw = env["ui"]["raw"]
@@ -274,7 +274,7 @@ def test_search_publications_envelope():
         query="melanoma",
     )
     assert env["ui"]["recipe"] == "trial_search_results"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "html"
     # PMIDs appear as badges linking to PubMed
     assert "11111" in env["ui"]["raw"]
     assert "22222" in env["ui"]["raw"]
@@ -333,7 +333,7 @@ def test_target_context_envelope():
         disease_id="EFO_0000756",
     )
     assert env["ui"]["recipe"] == "target_associations_table"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "html"
     # All three symbols present in the rendered HTML table
     assert "BRAF" in env["ui"]["raw"]
     assert "KRAS" in env["ui"]["raw"]
@@ -393,7 +393,7 @@ def test_web_context_envelope():
         query="melanoma BioNTech",
     )
     assert env["ui"]["recipe"] == "trial_search_results"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "html"
     assert len(env["sources"]) == 2
     assert all(s["kind"] == "web" for s in env["sources"])
 
@@ -440,7 +440,7 @@ def test_build_trial_comparison_envelope_renders_gantt():
         },
     )
     assert env["ui"]["recipe"] == "trial_timeline_gantt"
-    assert env["ui"]["artifact"]["type"] == "application/vnd.mermaid"
+    assert env["ui"]["artifact"]["type"] == "mermaid"
     raw = env["ui"]["raw"]
     # Pure mermaid source — no markdown wrapper, no ```mermaid fence
     assert raw.startswith("gantt")
@@ -501,7 +501,7 @@ def test_build_trial_comparison_missing_dates_falls_back_to_cards():
     )
     # Decision falls back to sponsor_pipeline_cards when dates are missing
     assert env["ui"]["recipe"] == "sponsor_pipeline_cards"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "html"
 
 
 # --- analyze_whitespace adapter + recipe (NEW) ------------------------------
@@ -524,7 +524,7 @@ def test_analyze_whitespace_envelope_renders_card():
         promptclub_data=payload,
     )
     assert env["ui"]["recipe"] == "whitespace_card"
-    assert env["ui"]["artifact"]["type"] == "text/html"
+    assert env["ui"]["artifact"]["type"] == "html"
     raw = env["ui"]["raw"]
     # All numbers surface in the rendered HTML stat tiles
     assert "42" in raw

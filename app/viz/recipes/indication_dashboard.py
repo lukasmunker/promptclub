@@ -84,7 +84,7 @@ def build(
         recipe="indication_dashboard",
         artifact=ArtifactMeta(
             identifier=make_identifier("indication_dashboard", indication),
-            type="text/html",
+            type="html",
             title=title,
         ),
         components=None,
