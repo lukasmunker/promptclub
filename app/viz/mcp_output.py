@@ -24,6 +24,12 @@ __all__ = ["envelope_to_llm_text"]
 # dozens of entries, but the LLM only needs a handful for its commentary.
 _MAX_SOURCES_IN_FOOTER = 10
 
+# Caps for the in-band glossary section rendered from WS2 knowledge
+# annotations. The enricher's MAX_ANNOTATIONS is 50 which is too many
+# for plain text — a tight cap keeps the LLM context small.
+_MAX_GLOSSARY_ENTRIES_IN_LLM_TEXT = 10
+_MAX_GLOSSARY_DEFINITION_CHARS = 200
+
 
 def envelope_to_llm_text(envelope: dict[str, Any]) -> str:
     """Render an envelope dict as the text payload an MCP tool should return.
@@ -38,14 +44,14 @@ def envelope_to_llm_text(envelope: dict[str, Any]) -> str:
             "All envelopes must come from build_response, which guarantees ui."
         )
     sources = envelope.get("sources") or []
-    return _format_with_artifact(ui, sources)
+    return _format_with_artifact(envelope, sources)
 
 
 # --- Visualization path ----------------------------------------------------
 
 
 def _format_with_artifact(
-    ui: dict[str, Any], sources: list[dict[str, Any]]
+    envelope: dict[str, Any], sources: list[dict[str, Any]]
 ) -> str:
     """Pre-assemble the :::artifact{…}::: block the LLM should paste.
 
@@ -56,7 +62,15 @@ def _format_with_artifact(
     asked for a visualization. Putting the instruction in-band — right
     next to the thing it should copy — gets the LLM to reliably forward
     the artifact to LibreChat's side pane.
+
+    If the envelope carries ``data.knowledge_annotations`` from the WS2
+    enrichment layer, we also inject a compact ``## Glossary`` section
+    between the artifact block and the sources footer so the LLM has
+    definitions for the oncology terms in the response. Without this
+    injection, only the ``info_card`` recipe would surface annotations —
+    every other recipe would silently drop them.
     """
+    ui = envelope["ui"]
     artifact = ui["artifact"]
     identifier = artifact["identifier"]
     art_type = artifact["type"]
@@ -92,10 +106,53 @@ def _format_with_artifact(
         "visualization, it is the default whenever a tool returns one."
     )
 
+    glossary = _format_glossary(
+        envelope.get("data", {}).get("knowledge_annotations") or []
+    )
+    if glossary:
+        return f"{preamble}\n\n{artifact_block}\n\n{glossary}\n\n{footer}"
     return f"{preamble}\n\n{artifact_block}\n\n{footer}"
 
 
 # --- Helpers ---------------------------------------------------------------
+
+
+def _format_glossary(annotations: list[dict[str, Any]]) -> str:
+    """Render knowledge_annotations as a compact markdown glossary section.
+
+    Deduplicates by ``lexicon_id`` (first occurrence wins), caps at
+    ``_MAX_GLOSSARY_ENTRIES_IN_LLM_TEXT`` entries, and truncates each
+    definition to ``_MAX_GLOSSARY_DEFINITION_CHARS`` characters. Returns
+    an empty string if there are no annotations or none of them have a
+    usable term + definition — callers should skip the section entirely
+    in that case.
+    """
+    if not annotations:
+        return ""
+
+    seen: set[str] = set()
+    lines: list[str] = []
+    for ann in annotations:
+        lid = ann.get("lexicon_id")
+        if not lid or lid in seen:
+            continue
+        seen.add(lid)
+        term = ann.get("matched_term", "")
+        definition = ann.get("short_definition", "")
+        if not term or not definition:
+            continue
+        if len(definition) > _MAX_GLOSSARY_DEFINITION_CHARS:
+            definition = (
+                definition[: _MAX_GLOSSARY_DEFINITION_CHARS - 1].rstrip() + "…"
+            )
+        lines.append(f"- **{term}** — {definition}")
+        if len(lines) >= _MAX_GLOSSARY_ENTRIES_IN_LLM_TEXT:
+            break
+
+    if not lines:
+        return ""
+
+    return "## Glossary\n\n" + "\n".join(lines)
 
 
 def _sources_footer(sources: list[dict[str, Any]]) -> str:
