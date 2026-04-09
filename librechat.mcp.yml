@@ -1,0 +1,7 @@
+mcpServers:
+  clinical-intel:
+    type: streamable-http
+    url: https://YOUR_CLOUD_RUN_URL/mcp
+    timeout: 30000
+    initTimeout: 15000
+    serverInstructions: true
