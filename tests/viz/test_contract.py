@@ -15,7 +15,7 @@ from app.viz.contract import (
     UiPayload,
 )
 from app.viz.render_hints import HTML as HTML_HINT
-from app.viz.render_hints import REACT as REACT_HINT
+from app.viz.render_hints import MERMAID as MERMAID_HINT
 from app.viz.render_hints import SKIP as SKIP_HINT
 
 
@@ -42,7 +42,11 @@ def test_source_rejects_unknown_kind():
         )
 
 
-# --- ComponentImport --------------------------------------------------------
+# --- ComponentImport (legacy type, retained for back-compat) ----------------
+# ``ComponentImport`` / ``BlueprintNode`` are no longer used by any recipe —
+# all artifacts are now ``text/html`` or ``application/vnd.mermaid`` with a
+# ``raw`` string. The classes are kept in the contract for forward-compat in
+# case a future recipe wants the React-blueprint path back.
 
 
 def test_component_import_accepts_shadcn_path():
@@ -77,21 +81,6 @@ def test_component_import_requires_non_empty_list():
 # --- UiPayload shape validation --------------------------------------------
 
 
-def _react_payload_kwargs():
-    return dict(
-        recipe="indication_dashboard",
-        artifact=ArtifactMeta(
-            identifier="indication-x-2026-04-09",
-            type="application/vnd.react",
-            title="X",
-        ),
-        components=[
-            ComponentImport(**{"from": "recharts", "import": ["BarChart"]})
-        ],
-        blueprint=[BlueprintNode(component="div")],
-    )
-
-
 def _html_payload_kwargs():
     return dict(
         recipe="trial_search_results",
@@ -104,25 +93,16 @@ def _html_payload_kwargs():
     )
 
 
-def test_react_payload_requires_blueprint():
-    kwargs = _react_payload_kwargs()
-    kwargs["blueprint"] = None
-    with pytest.raises(ValueError, match="blueprint"):
-        UiPayload(**kwargs)
-
-
-def test_react_payload_requires_components():
-    kwargs = _react_payload_kwargs()
-    kwargs["components"] = None
-    with pytest.raises(ValueError, match="components"):
-        UiPayload(**kwargs)
-
-
-def test_react_payload_rejects_raw():
-    kwargs = _react_payload_kwargs()
-    kwargs["raw"] = "<div>nope</div>"
-    with pytest.raises(ValueError, match="must not populate `raw`"):
-        UiPayload(**kwargs)
+def _mermaid_payload_kwargs():
+    return dict(
+        recipe="trial_timeline_gantt",
+        artifact=ArtifactMeta(
+            identifier="trial_timeline_gantt-x-2026-04-09",
+            type="application/vnd.mermaid",
+            title="X",
+        ),
+        raw="gantt\n    dateFormat YYYY-MM-DD",
+    )
 
 
 def test_html_payload_requires_raw():
@@ -146,6 +126,42 @@ def test_html_payload_rejects_components():
     ]
     with pytest.raises(ValueError, match="must not populate `components`"):
         UiPayload(**kwargs)
+
+
+def test_mermaid_payload_requires_raw():
+    kwargs = _mermaid_payload_kwargs()
+    kwargs["raw"] = "   "
+    with pytest.raises(ValueError, match="non-empty"):
+        UiPayload(**kwargs)
+
+
+def test_mermaid_payload_rejects_blueprint():
+    kwargs = _mermaid_payload_kwargs()
+    kwargs["blueprint"] = [BlueprintNode(component="div")]
+    with pytest.raises(ValueError, match="must not populate `blueprint`"):
+        UiPayload(**kwargs)
+
+
+def test_artifact_type_rejects_legacy_react_type():
+    """application/vnd.react was removed from the ArtifactType literal after
+    the Sandpack crash fix. Sanity-check that it no longer validates."""
+    with pytest.raises(ValueError):
+        ArtifactMeta(
+            identifier="x",
+            type="application/vnd.react",  # no longer allowed
+            title="X",
+        )
+
+
+def test_artifact_type_rejects_text_markdown():
+    """text/markdown was an interim inline-markdown type used between
+    dcc87d3 and the artifact restoration. No longer allowed."""
+    with pytest.raises(ValueError):
+        ArtifactMeta(
+            identifier="x",
+            type="text/markdown",
+            title="X",
+        )
 
 
 # --- Envelope + render_hint compliance --------------------------------------
@@ -176,6 +192,6 @@ def test_render_hint_must_mention_no_forward_looking():
 
 
 def test_all_builtin_hints_pass_compliance():
-    for hint in (REACT_HINT, HTML_HINT, SKIP_HINT):
+    for hint in (HTML_HINT, MERMAID_HINT, SKIP_HINT):
         # Should not raise
         Envelope(render_hint=hint, data={})
