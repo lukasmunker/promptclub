@@ -1,13 +1,11 @@
-"""Inline Markdown recipe: trial timelines as a mermaid gantt chart.
+"""Mermaid recipe: trial timelines as a gantt chart.
 
-Renders as a ``text/markdown`` envelope with the mermaid gantt embedded in a
-``` ```mermaid ``` fenced code block. LibreChat's chat markdown pipeline has
-a dedicated ``code`` component that detects ``lang === 'mermaid'`` and
-mounts the ``Mermaid`` React renderer inline — so the gantt appears directly
-in the chat bubble without opening the artifact side pane.
+Renders as an ``application/vnd.mermaid`` artifact — LibreChat has a dedicated
+``Mermaid.tsx`` renderer with zoom/pan.
 
-Labels are aggressively sanitized because Mermaid's parser chokes on colons,
-quotes, angle brackets, and unmatched parens in free-form labels.
+Produces a ``gantt`` diagram with one section per sponsor and one task row
+per trial. Labels are aggressively sanitized because Mermaid's parser chokes
+on colons, quotes, and unmatched parens in free-form labels.
 """
 
 from __future__ import annotations
@@ -16,13 +14,18 @@ from collections import defaultdict
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
-from app.viz.utils.citations import format_source_footer
 from app.viz.utils.identifiers import make_identifier
 from app.viz.utils.mermaid import is_valid_iso_date, safe_label
 
 __all__ = ["build", "MAX_TRIALS"]
 
 MAX_TRIALS = 15
+
+# Task labels are the longest horizontally-laid-out text in a gantt bar and
+# easily collide with section headers / other bars when too long. Keep them
+# short — full trial title / NCT ID is still visible on hover in the
+# Mermaid renderer.
+MAX_TASK_LABEL_LENGTH = 32
 
 
 def build(
@@ -41,20 +44,13 @@ def build(
     title = data.get("title") or "Trial Timeline Comparison"
     query = data.get("query") or title
 
-    gantt = _render_gantt(title, trials)
-    source_footer = format_source_footer(sources)
-
-    # Wrap the mermaid source in a Markdown heading + fenced code block so the
-    # envelope's ui.raw is a self-contained markdown snippet the LLM can paste
-    # verbatim into the chat message. The citation footer follows the fence
-    # so it sits visibly below the rendered gantt.
-    raw = f"## {_md_escape(title)}\n\n```mermaid\n{gantt}\n```\n{source_footer}"
+    raw = _render_gantt(title, trials)
 
     return UiPayload(
         recipe="trial_timeline_gantt",
         artifact=ArtifactMeta(
             identifier=make_identifier("trial_timeline_gantt", query),
-            type="text/markdown",
+            type="mermaid",
             title=title,
         ),
         components=None,
@@ -78,11 +74,20 @@ def _render_gantt(title: str, trials: list[dict[str, Any]]) -> str:
         sponsor = safe_label(t.get("sponsor") or "(unknown)")
         groups[sponsor].append(t)
 
+    # Emit a ``section`` header only when the gantt has more than one section.
+    # Mermaid's single-section gantt renders the section header on the same
+    # visual row as the (only) task bar, producing a text collision —
+    # dropping it keeps the bar clean and still labels the sponsor via the
+    # task label itself.
+    emit_sections = len(groups) > 1
+
     for sponsor, items in groups.items():
-        lines.append(f"    section {sponsor}")
+        if emit_sections:
+            lines.append(f"    section {sponsor}")
         for t in items:
             label = safe_label(
-                t.get("acronym") or t.get("title") or t.get("nct_id") or "trial"
+                t.get("acronym") or t.get("title") or t.get("nct_id") or "trial",
+                max_length=MAX_TASK_LABEL_LENGTH,
             )
             nct = t.get("nct_id") or "trial"
             # Mermaid task syntax: Label :status, taskId, start, end
@@ -93,17 +98,9 @@ def _render_gantt(title: str, trials: list[dict[str, Any]]) -> str:
             )
 
     if not trials:
-        # Empty-state: render a gantt with a placeholder section so the fence
+        # Empty-state: render a gantt with a placeholder task so the artifact
         # still parses. The decision layer should have caught this, but
         # defense in depth.
-        lines.append("    section No data")
         lines.append("    (no datable trials) :active, nodata, 2026-01-01, 2026-01-02")
 
     return "\n".join(lines)
-
-
-def _md_escape(text: object) -> str:
-    if text is None:
-        return ""
-    s = str(text)
-    return s.replace("\\", "\\\\").replace("_", "\\_").replace("*", "\\*")

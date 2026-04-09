@@ -15,10 +15,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # --- Literal types used across the contract ---------------------------------
 
 ArtifactType = Literal[
-    "application/vnd.react",
-    "text/html",
-    "application/vnd.mermaid",
-    "text/markdown",
+    "html",
+    "mermaid",
 ]
 
 SourceKind = Literal[
@@ -153,34 +151,22 @@ class UiPayload(BaseModel):
 
     @model_validator(mode="after")
     def _check_shape_matches_type(self) -> UiPayload:
+        # Every supported artifact type (text/html, application/vnd.mermaid)
+        # carries its body in `raw`. `blueprint` / `components` are reserved
+        # for the legacy React path and must not be populated.
         artifact_type = self.artifact.type
-        if artifact_type == "application/vnd.react":
-            if self.blueprint is None or not self.blueprint:
-                raise ValueError(
-                    "React artifacts require a non-empty `blueprint`."
-                )
-            if self.components is None or not self.components:
-                raise ValueError(
-                    "React artifacts require a non-empty `components` list."
-                )
-            if self.raw is not None:
-                raise ValueError(
-                    "React artifacts must not populate `raw`; use `blueprint`."
-                )
-        else:
-            # text/html or application/vnd.mermaid
-            if self.raw is None or not self.raw.strip():
-                raise ValueError(
-                    f"{artifact_type} artifacts require a non-empty `raw` string."
-                )
-            if self.blueprint is not None:
-                raise ValueError(
-                    f"{artifact_type} artifacts must not populate `blueprint`."
-                )
-            if self.components is not None:
-                raise ValueError(
-                    f"{artifact_type} artifacts must not populate `components`."
-                )
+        if self.raw is None or not self.raw.strip():
+            raise ValueError(
+                f"{artifact_type} artifacts require a non-empty `raw` string."
+            )
+        if self.blueprint is not None:
+            raise ValueError(
+                f"{artifact_type} artifacts must not populate `blueprint`."
+            )
+        if self.components is not None:
+            raise ValueError(
+                f"{artifact_type} artifacts must not populate `components`."
+            )
         return self
 
 
