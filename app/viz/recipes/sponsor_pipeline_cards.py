@@ -16,6 +16,7 @@ from app.viz.theme import (
     BADGE_MUTED,
     BADGE_NCT,
     CARD_STYLE_BLOCK,
+    CARD_STYLE_INLINE,
     CARD_WRAPPER,
     PILL_PHASE,
 )
@@ -42,7 +43,7 @@ def build(
 
     raw = (
         f"{CARD_STYLE_BLOCK}\n"
-        f'<div class="{CARD_WRAPPER}">\n'
+        f'<div class="{CARD_WRAPPER}" style="{CARD_STYLE_INLINE}">\n'
         f'<div class="space-y-6">\n'
         f"{section_html}\n"
         f"</div>\n"

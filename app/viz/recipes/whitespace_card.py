@@ -28,15 +28,18 @@ from typing import Any
 from app.viz.contract import ArtifactMeta, UiPayload
 from app.viz.theme import (
     CARD_STYLE_BLOCK,
+    CARD_STYLE_INLINE,
     CARD_WRAPPER,
     HEADER_BORDER,
     SIGNAL_CARD,
     SIGNAL_ICON_COLOR,
+    SUBTITLE_STYLE_INLINE,
     TILE_MUTED,
     TILE_PRIMARY,
     TILE_PRIMARY_SOLID,
     TILE_ROSE,
     TILE_SECONDARY,
+    TITLE_STYLE_INLINE,
 )
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
@@ -61,10 +64,10 @@ def build(
     signals_html = _render_signals(signals)
 
     raw = f"""{CARD_STYLE_BLOCK}
-<div class="{CARD_WRAPPER} space-y-4">
+<div class="{CARD_WRAPPER} space-y-4" style="{CARD_STYLE_INLINE}">
   <header class="{HEADER_BORDER} pb-2">
-    <h2 class="text-base font-semibold">{escape_html(title)}</h2>
-    <p class="text-xs text-gray-500">Source: ClinicalTrials.gov · PubMed · openFDA</p>
+    <h2 class="text-base font-semibold" style="{TITLE_STYLE_INLINE}">{escape_html(title)}</h2>
+    <p class="text-xs text-gray-500" style="{SUBTITLE_STYLE_INLINE}">Source: ClinicalTrials.gov · PubMed · openFDA</p>
   </header>
   {stat_tiles}
   {signals_html}

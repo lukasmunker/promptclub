@@ -24,10 +24,13 @@ from app.viz.theme import (
     BADGE_NCT,
     BADGE_PMID,
     CARD_STYLE_BLOCK,
+    CARD_STYLE_INLINE,
     CARD_WRAPPER,
     HEADER_BORDER,
     PILL_PHASE,
     PILL_STATUS,
+    SUBTITLE_STYLE_INLINE,
+    TITLE_STYLE_INLINE,
 )
 from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
@@ -68,7 +71,7 @@ def build(
 
     raw = (
         f"{CARD_STYLE_BLOCK}\n"
-        f'<div class="{CARD_WRAPPER} space-y-4">\n'
+        f'<div class="{CARD_WRAPPER} space-y-4" style="{CARD_STYLE_INLINE}">\n'
         f"  {header_html}\n"
         f"  {body_html}\n"
         "</div>"
@@ -128,11 +131,11 @@ def _render_header(title: str, nct_id: str, data: dict[str, Any]) -> str:
     pills_html = "".join(f"\n      {p}" for p in pills)
 
     return f"""<header class="{HEADER_BORDER} pb-3">
-    <h2 class="text-base font-semibold leading-snug">{escape_html(title)}</h2>
+    <h2 class="text-base font-semibold leading-snug" style="{TITLE_STYLE_INLINE}">{escape_html(title)}</h2>
     <div class="mt-2 flex flex-wrap items-center gap-2">
       {nct_badge}{pills_html}
     </div>
-    <p class="mt-1 text-xs text-gray-500">{meta_line}</p>
+    <p class="mt-1 text-xs text-gray-500" style="{SUBTITLE_STYLE_INLINE}">{meta_line}</p>
   </header>"""
 
 

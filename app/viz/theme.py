@@ -74,6 +74,39 @@ Every HTML recipe's outermost div uses this class — append
 ``space-y-4`` / ``space-y-6`` / layout utilities after."""
 
 
+CARD_STYLE_INLINE = (
+    "background-color:#ffffff !important;"
+    "color:#111827 !important;"
+    "padding:1rem;"
+    "border-radius:0.5rem;"
+    "font-family:ui-sans-serif,system-ui,-apple-system,"
+    "BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
+)
+"""Inline ``style="..."`` for the outer wrapper. Needed on top of the
+class + scoped style block because LibreChat's artifact renderer
+appears to override external stylesheet rules in dark mode — inline
+style with ``!important`` has the highest practical CSS specificity
+short of a user stylesheet, and is the most reliable way to force a
+light background regardless of what LibreChat does around the artifact."""
+
+
+TITLE_STYLE_INLINE = "color:#064d36 !important;"
+"""Inline ``style`` for the primary title ``<h2>`` in each recipe.
+Matches the darkest BioNtech green so the title is readable on the
+forced-white card background."""
+
+
+SUBTITLE_STYLE_INLINE = "color:#6b7280 !important;"
+"""Inline ``style`` for the gray subtitle line under each recipe's
+title. Uses gray-500 explicitly so LibreChat's dark-mode CSS cannot
+mute it further."""
+
+
+SECTION_HEADING_STYLE_INLINE = "color:#111827 !important;"
+"""Inline ``style`` for ``<h3>`` section headings (Overview, Design &
+Endpoints, etc.) — plain dark gray so they read clearly on white."""
+
+
 CARD_STYLE_BLOCK = """<style>
   /* Pharmafuse artifact override — forces a light theme regardless of
      LibreChat's dark-mode CSS. Uses !important to beat any ambient
@@ -312,6 +345,10 @@ __all__ = [
     # Wrapper
     "CARD_WRAPPER",
     "CARD_STYLE_BLOCK",
+    "CARD_STYLE_INLINE",
+    "TITLE_STYLE_INLINE",
+    "SUBTITLE_STYLE_INLINE",
+    "SECTION_HEADING_STYLE_INLINE",
     # Badges
     "BADGE_NCT",
     "BADGE_PMID",
