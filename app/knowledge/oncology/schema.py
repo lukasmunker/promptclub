@@ -25,10 +25,14 @@ __all__ = ["LexiconEntry", "Source", "Lexicon", "Annotation", "ALLOWED_SOURCE_DO
 
 
 # Authoritative source domains. Source URLs must come from one of these.
+# ``www.accessdata.fda.gov`` is the FDA subdomain that hosts official drug
+# label PDFs (e.g. Drugs@FDA), so it is included alongside the main FDA
+# domain.
 ALLOWED_SOURCE_DOMAINS = frozenset({
     "ncit.nci.nih.gov",
     "fda.gov",
     "www.fda.gov",
+    "www.accessdata.fda.gov",
     "ema.europa.eu",
     "www.ema.europa.eu",
     "recist.eortc.org",
