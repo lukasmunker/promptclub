@@ -102,9 +102,17 @@ async def test_data_sources(sample_query: str = "melanoma") -> dict[str, Any]:
     return {"results": [r.model_dump() for r in results]}
 
 
+# Create MCP ASGI app here to trigger lazy session_manager initialization
+# before the lifespan runs (session_manager is created on first call).
+_mcp_asgi = mcp.streamable_http_app()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    yield
+    # StreamableHTTPSessionManager requires its task group to be started.
+    # Mounted sub-apps do NOT run their own lifespan, so we start it here.
+    async with mcp.session_manager.run():
+        yield
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
@@ -136,7 +144,4 @@ async def health_sources():
     return {"results": [r.model_dump() for r in results]}
 
 
-# Mount at "/" so FastMCP's internal /mcp route is reachable at /mcp externally.
-# FastMCP registers its handler at path "/mcp" inside the sub-app, so mounting
-# at "/mcp" would make it double-nested (/mcp/mcp). Mounting at "/" is correct.
-app.mount("/", mcp.streamable_http_app())
+app.mount("/", _mcp_asgi)
