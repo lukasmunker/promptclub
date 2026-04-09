@@ -50,7 +50,7 @@ def build(
         recipe="trial_timeline_gantt",
         artifact=ArtifactMeta(
             identifier=make_identifier("trial_timeline_gantt", query),
-            type="application/vnd.mermaid",
+            type="mermaid",
             title=title,
         ),
         components=None,

@@ -50,7 +50,7 @@ def build(
         recipe="trial_search_results",
         artifact=ArtifactMeta(
             identifier=make_identifier("trial_search_results", query),
-            type="text/html",
+            type="html",
             title=title,
         ),
         components=None,

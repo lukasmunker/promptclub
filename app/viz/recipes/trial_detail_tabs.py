@@ -70,7 +70,7 @@ def build(
         recipe="trial_detail_tabs",
         artifact=ArtifactMeta(
             identifier=make_identifier("trial_detail_tabs", nct_id),
-            type="text/html",
+            type="html",
             title=f"Trial {nct_id}",
         ),
         components=None,

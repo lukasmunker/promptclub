@@ -25,7 +25,7 @@ def _html_envelope(raw: str = "<div>hello</div>") -> dict:
             "recipe": "trial_search_results",
             "artifact": {
                 "identifier": "trial-search-results-melanoma-2026-04-09",
-                "type": "text/html",
+                "type": "html",
                 "title": "Phase 3 Melanoma Trials",
             },
             "raw": raw,
@@ -54,7 +54,7 @@ def test_html_envelope_emits_artifact_block_verbatim():
 
     assert text.startswith(":::artifact{")
     assert 'identifier="trial-search-results-melanoma-2026-04-09"' in text
-    assert 'type="text/html"' in text
+    assert 'type="html"' in text
     assert 'title="Phase 3 Melanoma Trials"' in text
     # Raw HTML body appears between the opening attrs and the closing :::
     assert "<div>hello</div>" in text
@@ -126,7 +126,7 @@ def test_mermaid_envelope_emits_artifact_block_without_code_fence():
             "recipe": "trial_timeline_gantt",
             "artifact": {
                 "identifier": "gantt-xyz",
-                "type": "application/vnd.mermaid",
+                "type": "mermaid",
                 "title": "Trial Timeline",
             },
             "raw": "gantt\n    dateFormat  YYYY-MM-DD\n    title Trial Timeline",
@@ -136,7 +136,7 @@ def test_mermaid_envelope_emits_artifact_block_without_code_fence():
     }
     text = envelope_to_llm_text(env)
     assert text.startswith(":::artifact{")
-    assert 'type="application/vnd.mermaid"' in text
+    assert 'type="mermaid"' in text
     assert "gantt\n    dateFormat" in text
     assert "```mermaid" not in text
 

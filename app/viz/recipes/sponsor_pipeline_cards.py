@@ -45,7 +45,7 @@ def build(
         recipe="sponsor_pipeline_cards",
         artifact=ArtifactMeta(
             identifier=make_identifier("sponsor_pipeline_cards", query),
-            type="text/html",
+            type="html",
             title=title,
         ),
         components=None,

@@ -86,7 +86,7 @@ def _html_payload_kwargs():
         recipe="trial_search_results",
         artifact=ArtifactMeta(
             identifier="trial_search_results-x-2026-04-09",
-            type="text/html",
+            type="html",
             title="X",
         ),
         raw="<div>hello</div>",
@@ -98,7 +98,7 @@ def _mermaid_payload_kwargs():
         recipe="trial_timeline_gantt",
         artifact=ArtifactMeta(
             identifier="trial_timeline_gantt-x-2026-04-09",
-            type="application/vnd.mermaid",
+            type="mermaid",
             title="X",
         ),
         raw="gantt\n    dateFormat YYYY-MM-DD",
@@ -142,13 +142,35 @@ def test_mermaid_payload_rejects_blueprint():
         UiPayload(**kwargs)
 
 
+def test_artifact_type_rejects_mime_html():
+    """LibreChat's remark-directive parser expects short type names
+    (``html``, ``mermaid``), not MIME types. ``text/html`` is silently
+    ignored by the renderer — verify it also fails schema validation so
+    we catch regressions locally."""
+    with pytest.raises(ValueError):
+        ArtifactMeta(
+            identifier="x",
+            type="text/html",
+            title="X",
+        )
+
+
+def test_artifact_type_rejects_mime_mermaid():
+    with pytest.raises(ValueError):
+        ArtifactMeta(
+            identifier="x",
+            type="application/vnd.mermaid",
+            title="X",
+        )
+
+
 def test_artifact_type_rejects_legacy_react_type():
     """application/vnd.react was removed from the ArtifactType literal after
     the Sandpack crash fix. Sanity-check that it no longer validates."""
     with pytest.raises(ValueError):
         ArtifactMeta(
             identifier="x",
-            type="application/vnd.react",  # no longer allowed
+            type="application/vnd.react",
             title="X",
         )
 
