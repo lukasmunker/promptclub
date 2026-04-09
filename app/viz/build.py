@@ -1,6 +1,6 @@
 """Top-level entrypoint: build_response()
 
-The MCP Yallah server calls this at the end of each tool to turn raw tool
+The Pharmafuse MCP server calls this at the end of each tool to turn raw tool
 output into a LibreChat-ready envelope. Everything else in app.viz is an
 implementation detail behind this single function.
 """

@@ -1,11 +1,11 @@
-"""Adapter layer: promptclub model shapes → yallah_viz recipe shapes.
+"""Adapter layer: promptclub model shapes → pharmafuse-mcp viz recipe shapes.
 
 promptclub returns plain Pydantic ``model_dump()`` dicts whose field names
-don't exactly match what the yallah_viz recipes expect. Rather than rewrite
+don't exactly match what the pharmafuse-mcp viz recipes expect. Rather than rewrite
 the recipes, we normalize here.
 
 This module also converts promptclub's ``Citation`` objects into the
-``Source`` entries that yallah_viz envelopes use, filling in the missing
+``Source`` entries that pharmafuse-mcp viz envelopes use, filling in the missing
 ``retrieved_at`` timestamp and mapping the free-form ``source`` string to
 the ``SourceKind`` literal.
 
@@ -35,7 +35,7 @@ __all__ = ["build_response_from_promptclub", "normalize_citations_to_sources"]
 
 
 # Map promptclub's free-form `source` strings (as they appear in Citation.source
-# and Record.source) to the yallah_viz SourceKind literal.
+# and Record.source) to the pharmafuse-mcp viz SourceKind literal.
 _SOURCE_KIND_MAP = {
     "clinicaltrials.gov": "clinicaltrials.gov",
     "clinicaltrialsv2": "clinicaltrials.gov",
@@ -59,7 +59,7 @@ def _normalize_source_kind(source: str | None) -> str:
 def normalize_citations_to_sources(
     citations: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Turn promptclub Citation dicts into yallah_viz Source dicts.
+    """Turn promptclub Citation dicts into pharmafuse-mcp viz Source dicts.
 
     Input shape (from Citation.model_dump()):
         {source: str, id: str | None, url: str | None, title: str | None}
@@ -274,11 +274,11 @@ def build_response_from_promptclub(
     query: str | None = None,
     disease_id: str | None = None,
 ) -> dict[str, Any]:
-    """Convert a promptclub tool result into a yallah_viz envelope.
+    """Convert a promptclub tool result into a pharmafuse-mcp viz envelope.
 
     This is the single entrypoint each wired tool calls. It:
 
-    1. Normalizes ``promptclub_data`` into the shape yallah_viz recipes expect.
+    1. Normalizes ``promptclub_data`` into the shape pharmafuse-mcp viz recipes expect.
     2. Extracts ``citations`` from the data (and from any nested records) into
        the ``Source[]`` array the envelope needs.
     3. Delegates to ``build_response()`` which picks the recipe and validates.
@@ -358,7 +358,7 @@ def _handle_search_trials(
 
     citations = _extract_all_citations(data)
     return build_response(
-        tool_name="search_clinical_trials",  # yallah_viz recipe key
+        tool_name="search_clinical_trials",  # pharmafuse-mcp viz recipe key
         data=recipe_data,
         sources=normalize_citations_to_sources(citations),
         prefer_visualization=prefer,

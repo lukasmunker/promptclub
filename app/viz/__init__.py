@@ -1,4 +1,4 @@
-"""app.viz — Visualization layer for MCP Yallah.
+"""app.viz — Visualization layer for Pharmafuse MCP.
 
 Turns MCP tool outputs into LibreChat v0.8.4 artifact envelopes so answers
 render as charts (recharts), card lists (HTML + Tailwind), tabbed detail
