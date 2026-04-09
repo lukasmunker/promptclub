@@ -74,7 +74,10 @@ def build_response(
         return _serialize(envelope)
 
     builder = REGISTRY[recipe_name]
-    ui = builder(data)
+    # Pass sources into the recipe so it can embed an in-visualization
+    # citation footer ("Source: ClinicalTrials.gov (8) · Retrieved 2026-04-09")
+    # alongside the envelope-level `sources` array.
+    ui = builder(data, sources=normalized_sources)
 
     envelope = Envelope(
         render_hint=render_hints.for_artifact_type(ui.artifact.type),

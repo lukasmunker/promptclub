@@ -16,12 +16,16 @@ from collections import defaultdict
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, UiPayload
+from app.viz.utils.citations import format_source_footer
 from app.viz.utils.identifiers import make_identifier
 
 __all__ = ["build"]
 
 
-def build(data: dict[str, Any]) -> UiPayload:
+def build(
+    data: dict[str, Any],
+    sources: list[Any] | None = None,
+) -> UiPayload:
     trials: list[dict[str, Any]] = data.get("trials") or []
     group_key = data.get("group_by") or "sponsor"
     title = data.get("title") or "Sponsor Pipeline"
@@ -33,7 +37,8 @@ def build(data: dict[str, Any]) -> UiPayload:
         _render_section(name, items) for name, items in groups.items()
     )
 
-    raw = f"## {_md_escape(title)}\n\n{sections_md}\n"
+    source_footer = format_source_footer(sources)
+    raw = f"## {_md_escape(title)}\n\n{sections_md}\n{source_footer}"
 
     return UiPayload(
         recipe="sponsor_pipeline_cards",

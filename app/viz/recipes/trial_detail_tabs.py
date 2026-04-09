@@ -22,6 +22,8 @@ from typing import Any
 from app.viz.contract import ArtifactMeta, BlueprintNode, ComponentImport, UiPayload
 from app.viz.utils.identifiers import make_identifier
 
+from app.viz.utils.citations import format_source_footer_text
+
 __all__ = ["build"]
 
 # Tab configuration: (tab_value, label, data_key_check)
@@ -35,7 +37,10 @@ _TABS = [
 ]
 
 
-def build(data: dict[str, Any]) -> UiPayload:
+def build(
+    data: dict[str, Any],
+    sources: list[Any] | None = None,
+) -> UiPayload:
     nct_id = data.get("nct_id") or "trial"
     title_text = data.get("title") or nct_id
 
@@ -51,7 +56,26 @@ def build(data: dict[str, Any]) -> UiPayload:
         active_tabs = [("overview", "Overview")]
 
     components = _components()
-    blueprint = [_build_root(title_text, nct_id, active_tabs, data)]
+    root = _build_root(title_text, nct_id, active_tabs, data)
+
+    # Append a small citation footer paragraph beneath the root container so
+    # the source attribution is always visible in the artifact pane.
+    footer_text = format_source_footer_text(sources)
+    if footer_text:
+        footer_node = BlueprintNode(
+            component="p",
+            props={
+                "className": "mt-4 text-xs text-gray-500 italic text-center"
+            },
+            text=footer_text,
+        )
+        # root is a `div` with className "space-y-4 p-4" containing [header, tabs]
+        # — append the footer as another child so it sits at the bottom.
+        if root.children is None:
+            root.children = []
+        root.children.append(footer_node)
+
+    blueprint = [root]
 
     return UiPayload(
         recipe="trial_detail_tabs",
