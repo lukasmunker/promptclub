@@ -37,6 +37,19 @@ MERMAID = (
     "No forward-looking statements."
 )
 
+MARKDOWN = (
+    "MUST: Your reply MUST include the Markdown snippet in ui.raw copied "
+    "VERBATIM, embedded directly inline in your chat message body. This is "
+    "the inline-in-chat visualization path — do NOT wrap ui.raw in a "
+    "``:::artifact{…}::: block, do NOT convert it to HTML, and do NOT "
+    "paraphrase it. The snippet is intentionally compact so it renders "
+    "inline without opening the artifact side pane. After the snippet you "
+    "MAY add 2–5 sentences of analytical commentary. When you cite a "
+    "source in your commentary, use inline numbered markers like [1], [2] "
+    "that map to the References list in the tool result. Cite sources "
+    "from the 'sources' field. No forward-looking statements."
+)
+
 SKIP = (
     "Answer as plain text based on data. Cite sources using NCT/PMID IDs "
     "from the 'sources' field. No forward-looking statements."
@@ -49,12 +62,15 @@ def for_artifact_type(artifact_type: str) -> str:
         return HTML
     if artifact_type == "mermaid":
         return MERMAID
+    if artifact_type == "markdown":
+        return MARKDOWN
     raise ValueError(f"Unknown artifact type: {artifact_type!r}")
 
 
 __all__ = [
     "HTML",
     "MERMAID",
+    "MARKDOWN",
     "SKIP",
     "for_artifact_type",
 ]

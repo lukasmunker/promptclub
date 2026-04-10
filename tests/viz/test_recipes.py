@@ -593,10 +593,12 @@ from app.viz.recipes import info_card
 
 def test_info_card_renders_with_minimal_input():
     """Empty data must produce a valid UiPayload — this is the universal
-    catch-all for the coverage guarantee."""
+    catch-all for the coverage guarantee. The three small fallback recipes
+    (info / concept / single-entity card) emit ``markdown`` artifacts so
+    they render inline in the chat, not in the artifact side pane."""
     payload = info_card.build({}, sources=[])
     assert payload.recipe == "info_card"
-    assert payload.artifact.type == "html"
+    assert payload.artifact.type == "markdown"
     assert payload.raw is not None
     assert len(payload.raw) > 0
 

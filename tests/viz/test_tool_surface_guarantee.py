@@ -8,7 +8,9 @@ envelope dict by hand.
 
 The test mocks the Orchestrator so no real API calls are made, then awaits
 each tool function and asserts the returned text starts with the
-ACTION REQUIRED preamble and contains a :::artifact{ block.
+ACTION REQUIRED preamble and carries a non-empty body — either a side-pane
+``:::artifact{…}:::`` directive (html/mermaid recipes) or an inline
+Markdown snippet (info_card / concept_card / single_entity_card).
 """
 
 from __future__ import annotations
@@ -91,7 +93,11 @@ async def test_every_tool_returns_artifact(
     mocked_orchestrator, tool_name, kwargs
 ):
     """Every tool must return a string starting with ACTION REQUIRED and
-    containing a :::artifact{ block — even for empty/minimal inputs."""
+    either a ``:::artifact{`` directive (side-pane path) or an inline
+    Markdown body — even for empty / minimal inputs. The three small
+    fallback recipes (info_card / concept_card / single_entity_card) now
+    emit inline Markdown instead of an artifact directive, so the
+    presence check is over EITHER shape — never neither."""
     tool_func = getattr(appmain, tool_name, None)
     assert tool_func is not None, f"Tool '{tool_name}' not found in app.main"
 
@@ -107,7 +113,11 @@ async def test_every_tool_returns_artifact(
         f"Tool '{tool_name}' output does not start with ACTION REQUIRED: "
         f"{result[:200]!r}"
     )
-    assert ":::artifact{" in result, (
-        f"Tool '{tool_name}' output missing :::artifact{{ block: "
-        f"{result[:200]!r}"
+    has_artifact_directive = ":::artifact{identifier=" in result
+    has_inline_markdown_body = (
+        "copy the Markdown snippet" in result and "### " in result
+    )
+    assert has_artifact_directive or has_inline_markdown_body, (
+        f"Tool '{tool_name}' output missing both an artifact directive "
+        f"AND an inline Markdown body: {result[:300]!r}"
     )

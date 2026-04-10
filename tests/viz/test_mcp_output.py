@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import pytest
 
+from app.citations import attach_citation_layer
+from app.models import Citation
+from app.viz.build import build_response
 from app.viz.mcp_output import envelope_to_llm_text
 
 
@@ -54,7 +57,7 @@ def test_html_envelope_starts_with_action_required_preamble():
     env = _html_envelope()
     text = envelope_to_llm_text(env)
     assert text.startswith("ACTION REQUIRED")
-    assert "copy the :::artifact" in text
+    assert "copy the artifact directive block" in text
     assert "VERBATIM" in text
 
 
@@ -127,6 +130,206 @@ def test_html_envelope_caps_sources_footer_at_ten():
     assert "[pubmed] 00000009" in text
     assert "[pubmed] 00000010" not in text
     assert "(+15 more)" in text
+
+
+# --- Markdown inline path --------------------------------------------------
+
+
+def _markdown_envelope(raw: str = "### Concept\n\n> A short definition.") -> dict:
+    """Minimal envelope with a ``markdown`` artifact — the inline path."""
+    return {
+        "render_hint": (
+            "MUST: …cite sources inline [1]… no forward-looking statements."
+        ),
+        "ui": {
+            "recipe": "concept_card",
+            "artifact": {
+                "identifier": "concept-card-recist",
+                "type": "markdown",
+                "title": "RECIST 1.1",
+            },
+            "raw": raw,
+        },
+        "data": {},
+        "sources": [],
+    }
+
+
+def test_markdown_envelope_does_not_wrap_in_artifact_directive():
+    """The inline-markdown path must NOT wrap ui.raw in a
+    ``:::artifact{…}:::`` block — that would push the content into the
+    side pane, which is exactly what this path is meant to avoid."""
+    text = envelope_to_llm_text(_markdown_envelope())
+    assert ":::artifact" not in text
+    assert "type=\"markdown\"" not in text
+
+
+def test_markdown_envelope_embeds_raw_inline():
+    """The markdown body must appear verbatim inline in the LLM text."""
+    raw = "### RECIST 1.1\n\n> Response Evaluation Criteria in Solid Tumors."
+    text = envelope_to_llm_text(_markdown_envelope(raw=raw))
+    assert raw in text
+
+
+def test_markdown_envelope_preamble_instructs_inline_paste():
+    """The preamble on the inline path must tell the LLM to paste the
+    snippet inline, not wrap it in an artifact directive."""
+    text = envelope_to_llm_text(_markdown_envelope())
+    assert text.startswith("ACTION REQUIRED")
+    # Must NOT say "copy the :::artifact block"
+    assert "copy the :::artifact" not in text
+    # Must mention inline embedding and numbered citation markers
+    assert "inline" in text.lower()
+    assert "[1]" in text
+
+
+def test_markdown_envelope_includes_sources_footer():
+    env = _markdown_envelope()
+    env["sources"] = [
+        {
+            "kind": "pubmed",
+            "id": "12345678",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/12345678/",
+            "retrieved_at": "2026-04-09T12:00:00Z",
+        }
+    ]
+    text = envelope_to_llm_text(env)
+    assert "Sources:" in text
+    assert "[pubmed] 12345678" in text
+
+
+# --- Numbered references path (citation_layer) ----------------------------
+
+
+def _citation_layer_envelope(
+    artifact_type: str = "html",
+    references: list[dict] | None = None,
+) -> dict:
+    """Envelope with an attached citation_layer simulating the output of
+    ``app.citations.attach_citation_layer``."""
+    refs = references if references is not None else [
+        {
+            "index": 1,
+            "marker": "[1]",
+            "markdown_marker": "[[1]](https://pubmed.ncbi.nlm.nih.gov/12345678/)",
+            "label": "Pembrolizumab in NSCLC",
+            "source": "PubMed",
+            "id": "12345678",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/12345678/",
+            "title": "Pembrolizumab in NSCLC",
+        },
+        {
+            "index": 2,
+            "marker": "[2]",
+            "markdown_marker": "[[2]](https://clinicaltrials.gov/study/NCT01234567)",
+            "label": "NCT01234567",
+            "source": "ClinicalTrials.gov",
+            "id": "NCT01234567",
+            "url": "https://clinicaltrials.gov/study/NCT01234567",
+            "title": "Phase 3 study",
+        },
+    ]
+    return {
+        "render_hint": "MUST: …cite sources… no forward-looking statements.",
+        "ui": {
+            "recipe": "trial_search_results" if artifact_type == "html" else "concept_card",
+            "artifact": {
+                "identifier": "test-id",
+                "type": artifact_type,
+                "title": "Test",
+            },
+            "raw": (
+                "<div>hi</div>" if artifact_type == "html" else "### RECIST"
+            ),
+        },
+        "data": {},
+        "sources": [],
+        "citation_layer": {"references": refs},
+    }
+
+
+def test_citation_layer_renders_numbered_references_block():
+    """When the envelope carries a citation_layer, the LLM text must
+    include a numbered ``## References`` section with clickable markdown
+    links — that's how we get inline clickable citations."""
+    text = envelope_to_llm_text(_citation_layer_envelope())
+    assert "## References" in text
+    # Numbered clickable entries
+    assert "[1] [Pembrolizumab in NSCLC](https://pubmed.ncbi.nlm.nih.gov/12345678/)" in text
+    assert "[2] [NCT01234567](https://clinicaltrials.gov/study/NCT01234567)" in text
+
+
+def test_citation_layer_emits_link_reference_footer_for_auto_linking():
+    """Each reference must also appear as a markdown link reference
+    (``[n]: url``) so bare ``[n]`` tokens in the LLM's commentary
+    auto-link without the LLM needing to emit full markdown links."""
+    text = envelope_to_llm_text(_citation_layer_envelope())
+    assert "[1]: https://pubmed.ncbi.nlm.nih.gov/12345678/" in text
+    assert "[2]: https://clinicaltrials.gov/study/NCT01234567" in text
+
+
+def test_citation_layer_references_appear_between_artifact_and_sources():
+    """Order: artifact block → (optional glossary) → ## References →
+    link-ref footer → Sources: footer. This keeps the inline refs visible
+    to the LLM AFTER the artifact and BEFORE the one-line Sources bag."""
+    text = envelope_to_llm_text(_citation_layer_envelope(artifact_type="html"))
+    artifact_end = text.index(":::\n")  # first closing fence after artifact
+    refs_idx = text.index("## References")
+    sources_idx = text.index("Sources:")
+    assert artifact_end < refs_idx < sources_idx
+
+
+def test_citation_layer_skipped_when_references_empty():
+    """No references → no ``## References`` section."""
+    env = _citation_layer_envelope(references=[])
+    # Without any references, attach_citation_layer wouldn't attach the
+    # layer at all, but defend against a partial attach just in case.
+    env["citation_layer"] = {"references": []}
+    text = envelope_to_llm_text(env)
+    assert "## References" not in text
+
+
+def test_citation_layer_skipped_when_not_attached():
+    """No citation_layer key → no ``## References`` section. This is the
+    baseline behavior — only tools that pass citations through
+    ``attach_citation_layer`` get the inline references block."""
+    env = _citation_layer_envelope()
+    del env["citation_layer"]
+    text = envelope_to_llm_text(env)
+    assert "## References" not in text
+
+
+def test_citation_layer_drops_references_missing_url():
+    """References without a URL can't be clickable — drop them silently."""
+    env = _citation_layer_envelope(
+        references=[
+            {
+                "index": 1,
+                "label": "No URL reference",
+                "source": "Source",
+                "id": "xyz",
+                "url": None,
+            },
+            {
+                "index": 2,
+                "label": "Has URL",
+                "source": "PubMed",
+                "id": "12345",
+                "url": "https://pubmed.ncbi.nlm.nih.gov/12345/",
+            },
+        ]
+    )
+    text = envelope_to_llm_text(env)
+    assert "No URL reference" not in text
+    assert "[2] [Has URL](https://pubmed.ncbi.nlm.nih.gov/12345/)" in text
+
+
+def test_citation_layer_works_with_inline_markdown_envelope():
+    """The inline-markdown path must also render the references block
+    so compact recipes benefit from clickable citations."""
+    text = envelope_to_llm_text(_citation_layer_envelope(artifact_type="markdown"))
+    assert "## References" in text
+    assert "[1]:" in text
 
 
 # --- Mermaid artifact path --------------------------------------------------
@@ -221,7 +424,11 @@ def test_no_data_without_guardrail_raises_value_error():
 
 def test_mcp_output_never_emits_no_visualization_marker():
     """The [NO VISUALIZATION] and [NO DATA AVAILABLE] markers must not
-    appear for any envelope produced by build_response."""
+    appear for any envelope produced by build_response. Every envelope
+    must also carry a non-empty body — either an artifact directive
+    block (side-pane path) or an inline Markdown snippet (inline path)
+    — and start with the ACTION REQUIRED preamble so the LLM knows what
+    to do with it."""
     from app.viz.build import build_response
     from app.viz.mcp_output import envelope_to_llm_text
 
@@ -233,7 +440,17 @@ def test_mcp_output_never_emits_no_visualization_marker():
             query_hint="test",
         )
         text = envelope_to_llm_text(envelope)
-        assert ":::artifact" in text
+        assert text.startswith("ACTION REQUIRED")
+        # Either a side-pane artifact block OR an inline markdown body
+        # must be present — never neither.
+        has_artifact = ":::artifact{identifier=" in text
+        has_inline_body = bool(envelope["ui"].get("raw")) and (
+            envelope["ui"]["raw"].strip() in text
+        )
+        assert has_artifact or has_inline_body, (
+            "envelope produced neither an artifact directive nor an inline "
+            "markdown body — coverage guarantee broken"
+        )
         assert "[NO VISUALIZATION]" not in text
         assert "[NO DATA AVAILABLE]" not in text
 
@@ -392,3 +609,129 @@ def test_envelope_to_llm_text_glossary_truncates_long_definitions():
     assert long_def not in text
     # But the truncation marker must
     assert "…" in text
+
+
+# --- End-to-end: Citation → attach_citation_layer → LLM text --------------
+
+
+def test_end_to_end_citations_produce_inline_numbered_references():
+    """Full pipeline smoke test: feed real ``Citation`` models through
+    ``attach_citation_layer`` on an envelope returned by
+    ``build_response`` and assert the LLM-facing text carries the inline
+    numbered references block with clickable markdown links.
+
+    This is the regression gate for the "clickable numbered references"
+    problem — if any future refactor breaks the wiring between
+    ``attach_citation_layer`` and ``envelope_to_llm_text``, this test
+    fires before the LLM ever sees a references-less tool result.
+    """
+    envelope = build_response(
+        tool_name="get_target_context",
+        data={
+            "disease_id": "EFO_0000756",
+            "disease_name": "Melanoma",
+            "associations": [
+                {"target_symbol": "BRAF", "target_name": "BRAF", "score": 0.95},
+                {"target_symbol": "NRAS", "target_name": "NRAS", "score": 0.80},
+                {"target_symbol": "PTEN", "target_name": "PTEN", "score": 0.70},
+            ],
+        },
+        sources=[
+            {
+                "kind": "opentargets",
+                "id": "EFO_0000756",
+                "url": "https://platform.opentargets.org/disease/EFO_0000756",
+                "retrieved_at": "2026-04-09T12:00:00Z",
+            }
+        ],
+    )
+    citations = [
+        Citation(
+            source="Open Targets",
+            id="EFO_0000756",
+            url="https://platform.opentargets.org/disease/EFO_0000756",
+            title="Melanoma target-disease associations",
+        ),
+        Citation(
+            source="PubMed",
+            id="12345678",
+            url="https://pubmed.ncbi.nlm.nih.gov/12345678/",
+            title="BRAF in melanoma",
+        ),
+    ]
+    enriched = attach_citation_layer(envelope, citations)
+    text = envelope_to_llm_text(enriched)
+
+    # The enriched envelope must carry the citation_layer
+    assert "citation_layer" in enriched
+    assert len(enriched["citation_layer"]["references"]) == 2
+
+    # The rendered text must contain the numbered References block
+    assert "## References" in text
+    assert "[1]" in text
+    assert "[2]" in text
+    # Both references must render as clickable markdown links
+    assert "https://platform.opentargets.org/disease/EFO_0000756" in text
+    assert "https://pubmed.ncbi.nlm.nih.gov/12345678/" in text
+    # Both references must appear in the link-reference footer too
+    assert "[1]: https://platform.opentargets.org/disease/EFO_0000756" in text
+    assert "[2]: https://pubmed.ncbi.nlm.nih.gov/12345678/" in text
+
+
+def test_end_to_end_no_citations_means_no_references_block():
+    """Baseline regression: tools that don't pass citations through
+    ``attach_citation_layer`` must not produce a ``## References`` block
+    (falling back to the one-line ``Sources:`` footer only)."""
+    envelope = build_response(
+        tool_name="get_target_context",
+        data={
+            "disease_id": "EFO_0000756",
+            "associations": [
+                {"target_symbol": "BRAF", "score": 0.95},
+                {"target_symbol": "NRAS", "score": 0.80},
+            ],
+        },
+        sources=[],
+    )
+    # NO attach_citation_layer call — simulating a tool that didn't
+    # forward its Citation objects.
+    text = envelope_to_llm_text(envelope)
+    assert "## References" not in text
+
+
+def test_end_to_end_inline_markdown_recipe_end_to_end():
+    """End-to-end: a concept-card fallback runs through build_response
+    → attach_citation_layer → envelope_to_llm_text and produces an
+    inline-markdown body (not a ``:::artifact`` block) plus the numbered
+    references section."""
+    envelope = build_response(
+        tool_name="resolve_disease",  # unknown → fallback dispatcher
+        data={"query": "what is RECIST 1.1"},
+        sources=[],
+        query_hint="what is RECIST",
+    )
+    # Fallback should route to one of the compact inline recipes
+    assert envelope["ui"]["recipe"] in (
+        "info_card", "concept_card", "single_entity_card"
+    )
+    assert envelope["ui"]["artifact"]["type"] == "markdown"
+
+    citations = [
+        Citation(
+            source="PubMed",
+            id="9060828",
+            url="https://pubmed.ncbi.nlm.nih.gov/9060828/",
+            title="RECIST criteria",
+        )
+    ]
+    enriched = attach_citation_layer(envelope, citations)
+    text = envelope_to_llm_text(enriched)
+
+    # Inline markdown path: no :::artifact{ wrapping
+    assert ":::artifact" not in text
+    # But the body must still be visible inline
+    assert envelope["ui"]["raw"] in text
+    # References block must still render
+    assert "## References" in text
+    assert "[1]" in text
+    assert "https://pubmed.ncbi.nlm.nih.gov/9060828/" in text

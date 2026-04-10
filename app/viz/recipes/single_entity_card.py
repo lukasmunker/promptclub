@@ -1,13 +1,15 @@
-"""HTML recipe: single-entity detail card.
+"""Markdown recipe: single-entity detail card.
 
 Used by the fallback dispatcher when the response represents one
 identifiable entity (one trial, one drug, one disease, one target).
-Renders a title, subtitle, and a key/value facts table.
+Renders as a compact **inline** Markdown snippet — not a side-pane HTML
+artifact — because a small key/value facts list doesn't warrant opening
+LibreChat's artifact side pane.
 
 Input shape:
 
     {
-        "kind": "trial" | "drug" | "disease" | "target" (used for icon hint),
+        "kind": "trial" | "drug" | "disease" | "target",
         "title": "Required — the entity name or ID",
         "subtitle": "Optional one-line description",
         "facts": [("Key", "Value"), ...],   # ordered key/value pairs
@@ -19,7 +21,6 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, Source, UiPayload
-from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
 __all__ = ["build"]
@@ -34,43 +35,45 @@ def build(
     subtitle = data.get("subtitle")
     facts = data.get("facts") or []
 
-    subtitle_html = ""
+    lines: list[str] = []
+    lines.append(f"_{_safe_markdown(kind)}_")
+    lines.append(f"### {_safe_markdown(title)}")
     if subtitle:
-        subtitle_html = (
-            f'<p class="text-sm text-gray-500 mt-1">{escape_html(str(subtitle))}</p>'
-        )
+        lines.append("")
+        lines.append(f"{_safe_markdown(str(subtitle))}")
 
-    facts_html = ""
-    if facts:
-        rows = "\n        ".join(
-            f"""<div class="flex justify-between border-b border-gray-100 py-1.5">
-          <span class="text-xs uppercase tracking-wide text-gray-500">{escape_html(str(k))}</span>
-          <span class="text-sm font-medium text-gray-900 text-right">{escape_html(str(v))}</span>
-        </div>"""
-            for k, v in facts if k
-        )
-        facts_html = (
-            f'<dl class="mt-3 space-y-0">\n        {rows}\n      </dl>'
-        )
+    rows: list[tuple[str, str]] = []
+    if isinstance(facts, list):
+        for entry in facts:
+            if not entry:
+                continue
+            if isinstance(entry, (list, tuple)) and len(entry) >= 2:
+                key = entry[0]
+                value = entry[1]
+            elif isinstance(entry, dict):
+                # Support {"key": ..., "value": ...} fact shape too.
+                key = entry.get("key") or entry.get("name")
+                value = entry.get("value")
+            else:
+                continue
+            if not key:
+                continue
+            rows.append((_safe_markdown(str(key)), _safe_markdown(str(value))))
 
-    raw = f"""<div class="p-4 font-sans rounded-lg border border-gray-200 bg-white">
-  <header class="border-b border-gray-100 pb-2 mb-2">
-    <p class="text-xs uppercase tracking-wide text-gray-400">{escape_html(kind)}</p>
-    <h2 class="text-base font-semibold text-gray-900">{escape_html(title)}</h2>
-    {subtitle_html}
-  </header>
-  <section>
-    {facts_html}
-  </section>
-</div>"""
+    if rows:
+        lines.append("")
+        lines.append("| Field | Value |")
+        lines.append("| --- | --- |")
+        for key, value in rows:
+            lines.append(f"| {key} | {value} |")
 
-    assert_safe_html(raw)
+    raw = "\n".join(lines)
 
     return UiPayload(
         recipe="single_entity_card",
         artifact=ArtifactMeta(
             identifier=make_identifier("single_entity_card", title),
-            type="html",
+            type="markdown",
             title=title,
         ),
         components=None,
@@ -78,3 +81,16 @@ def build(
         blueprint=None,
         raw=raw,
     )
+
+
+def _safe_markdown(value: str) -> str:
+    """Neutralize raw HTML in user inputs so the inline-markdown path is
+    still XSS-safe. Also collapses pipes to avoid breaking GFM tables."""
+    escaped = (
+        value.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .strip()
+    )
+    # ``|`` is the GFM table column delimiter — escape to keep rows intact.
+    return escaped.replace("|", "\\|")

@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 ArtifactType = Literal[
     "html",
     "mermaid",
+    "markdown",
 ]
 
 SourceKind = Literal[
@@ -154,9 +155,13 @@ class UiPayload(BaseModel):
 
     @model_validator(mode="after")
     def _check_shape_matches_type(self) -> UiPayload:
-        # Every supported artifact type (text/html, application/vnd.mermaid)
-        # carries its body in `raw`. `blueprint` / `components` are reserved
-        # for the legacy React path and must not be populated.
+        # Every supported artifact type (html, mermaid, markdown) carries
+        # its body in `raw`. ``markdown`` is the inline-in-chat type — the
+        # body is a plain Markdown snippet that the LLM-facing text pipeline
+        # will embed directly into the chat message body instead of wrapping
+        # it in a ``:::artifact{…}:::`` directive. ``blueprint`` /
+        # ``components`` are reserved for the legacy React path and must not
+        # be populated.
         artifact_type = self.artifact.type
         if self.raw is None or not self.raw.strip():
             raise ValueError(

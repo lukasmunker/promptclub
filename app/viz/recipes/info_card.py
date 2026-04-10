@@ -1,9 +1,14 @@
-"""HTML recipe: universal catch-all info card.
+"""Markdown recipe: universal catch-all info card.
 
 This recipe is the visualization coverage guarantor. It accepts ANY
 ``data`` shape (including empty dicts) and produces a valid UiPayload
-with a Tailwind-styled card. When no specialized recipe matches, the
-fallback dispatcher in app.viz.fallback routes here.
+with a compact Markdown body. When no specialized recipe matches, the
+fallback dispatcher in ``app.viz.fallback`` routes here.
+
+Renders as a compact **inline** Markdown snippet — not a side-pane HTML
+artifact — because the catch-all is almost always just a title + a few
+bullets, and opening LibreChat's artifact side pane for a short bullet
+list is pure friction.
 
 Input shape (all optional):
 
@@ -12,6 +17,7 @@ Input shape (all optional):
         "subtitle": "Optional subtitle",
         "bullets": ["fact 1", "fact 2"],         # rendered as a bullet list
         "no_results_hint": "Hint shown when bullets is empty",
+        "knowledge_annotations": [...],            # WS2 glossary entries
     }
 """
 
@@ -20,7 +26,6 @@ from __future__ import annotations
 from typing import Any
 
 from app.viz.contract import ArtifactMeta, Source, UiPayload
-from app.viz.utils.html import assert_safe_html, escape_html
 from app.viz.utils.identifiers import make_identifier
 
 __all__ = ["build"]
@@ -35,49 +40,36 @@ def build(
     bullets = data.get("bullets") or []
     hint = data.get("no_results_hint")
 
-    body_parts: list[str] = []
+    lines: list[str] = [f"### {_safe_markdown(title)}"]
+
     if subtitle:
-        body_parts.append(
-            f'<p class="text-sm text-gray-500">{escape_html(str(subtitle))}</p>'
-        )
+        lines.append("")
+        lines.append(f"_{_safe_markdown(str(subtitle))}_")
 
-    if bullets:
-        items = "\n      ".join(
-            f"<li>{escape_html(str(b))}</li>" for b in bullets if b
-        )
-        body_parts.append(
-            f'<ul class="mt-3 list-disc list-inside text-sm text-gray-800 space-y-1">\n      {items}\n    </ul>'
-        )
+    bullet_items = [b for b in bullets if b] if isinstance(bullets, list) else []
+    if bullet_items:
+        lines.append("")
+        for b in bullet_items:
+            lines.append(f"- {_safe_markdown(str(b))}")
     elif hint:
-        body_parts.append(
-            f'<p class="mt-3 text-sm italic text-gray-500">{escape_html(str(hint))}</p>'
-        )
+        lines.append("")
+        lines.append(f"_{_safe_markdown(str(hint))}_")
     else:
-        body_parts.append(
-            '<p class="mt-3 text-sm italic text-gray-500">No additional details available.</p>'
-        )
+        lines.append("")
+        lines.append("_No additional details available._")
 
-    body = "\n    ".join(body_parts)
+    glossary_md = _render_glossary(data.get("knowledge_annotations") or [])
+    if glossary_md:
+        lines.append("")
+        lines.append(glossary_md)
 
-    glossary_html = _render_glossary(data.get("knowledge_annotations") or [])
-
-    raw = f"""<div class="p-4 font-sans rounded-lg border border-gray-200 bg-white">
-  <header class="border-b border-gray-100 pb-2 mb-2">
-    <h2 class="text-base font-semibold text-gray-900">{escape_html(title)}</h2>
-  </header>
-  <section>
-    {body}
-    {glossary_html}
-  </section>
-</div>"""
-
-    assert_safe_html(raw)
+    raw = "\n".join(lines)
 
     return UiPayload(
         recipe="info_card",
         artifact=ArtifactMeta(
             identifier=make_identifier("info_card", title),
-            type="html",
+            type="markdown",
             title=title,
         ),
         components=None,
@@ -90,8 +82,9 @@ def build(
 def _render_glossary(annotations: list[dict[str, Any]]) -> str:
     """Render a deduplicated glossary block from knowledge annotations.
 
-    Only one entry per unique lexicon_id is shown — the first occurrence
-    wins. Returns empty string if no annotations.
+    Only one entry per unique ``lexicon_id`` is shown — the first
+    occurrence wins. Returns an empty string if no annotations produce
+    a usable term + definition.
     """
     if not annotations:
         return ""
@@ -103,18 +96,26 @@ def _render_glossary(annotations: list[dict[str, Any]]) -> str:
         if not lid or lid in seen:
             continue
         seen.add(lid)
-        term = escape_html(str(ann.get("matched_term", "")))
-        definition = escape_html(str(ann.get("short_definition", "")))
-        items.append(
-            f'<li class="text-xs text-gray-700"><span class="font-semibold">{term}</span> — {definition}</li>'
-        )
+        term = _safe_markdown(str(ann.get("matched_term", "")))
+        definition = _safe_markdown(str(ann.get("short_definition", "")))
+        if not term or not definition:
+            continue
+        items.append(f"- **{term}** — {definition}")
 
     if not items:
         return ""
 
-    return f"""<div class="mt-4 pt-3 border-t border-gray-100">
-      <p class="text-xs uppercase tracking-wide text-gray-400 mb-2">Glossary</p>
-      <ul class="space-y-1">
-        {"".join(items)}
-      </ul>
-    </div>"""
+    return "**Glossary**\n\n" + "\n".join(items)
+
+
+def _safe_markdown(value: str) -> str:
+    """Neutralize raw HTML in user inputs so the inline-markdown path is
+    still XSS-safe. Escaping ``<`` / ``>`` / ``&`` gives us the same
+    guarantee the HTML recipes get from ``escape_html`` — tokens render
+    literally and cannot execute as markup."""
+    return (
+        value.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .strip()
+    )
