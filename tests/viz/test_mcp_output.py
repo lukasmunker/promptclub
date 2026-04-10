@@ -53,12 +53,33 @@ def _html_envelope(raw: str = "<div>hello</div>") -> dict:
 
 def test_html_envelope_starts_with_action_required_preamble():
     """The tool result must start with the in-band instruction so the LLM
-    reads "paste this verbatim" before the artifact block itself."""
+    reads "paste this verbatim" before the artifact block itself, and must
+    spell out the three rules (paste artifact, cite as `[N](URL)`, add
+    inline supporting diagrams)."""
     env = _html_envelope()
     text = envelope_to_llm_text(env)
     assert text.startswith("ACTION REQUIRED")
-    assert "copy the artifact directive block" in text
+    assert "PASTE THE TOOL'S ARTIFACT" in text
     assert "VERBATIM" in text
+    assert "CITE SOURCES AS CLICKABLE INLINE LINKS" in text
+    assert "ADD INLINE SUPPORTING DIAGRAMS" in text
+
+
+def test_html_envelope_preamble_shows_inline_link_citation_format():
+    """The preamble must explicitly tell the LLM to cite using
+    ``[N](URL)`` markdown link syntax with a DO/DON'T example. Without
+    this the LLM falls back to bare ``[N]`` or compound ``[1, 9]``
+    markers, neither of which renders as a clickable link."""
+    text = envelope_to_llm_text(_html_envelope())
+    # The format hint
+    assert "[N](URL)" in text or "`[N](URL)`" in text
+    # The DO example with a real URL
+    assert "DO write" in text and "[1](https://" in text
+    # The DON'T against bare numbered markers
+    assert "DON'T write bare `[1]`" in text
+    # The DON'T against compound brackets — this is the academic style
+    # the LLM defaults to and the bug we're fixing.
+    assert "[1, 9]" in text
 
 
 def test_html_envelope_contains_artifact_block_after_preamble():
@@ -156,11 +177,14 @@ def _markdown_envelope(raw: str = "### Concept\n\n> A short definition.") -> dic
 
 
 def test_markdown_envelope_does_not_wrap_in_artifact_directive():
-    """The inline-markdown path must NOT wrap ui.raw in a
-    ``:::artifact{…}:::`` block — that would push the content into the
-    side pane, which is exactly what this path is meant to avoid."""
+    """The inline-markdown path must NOT wrap ui.raw in an actual
+    ``:::artifact{identifier=...}:::`` directive — that would push the
+    content into the side pane, which is exactly what this path is
+    meant to avoid. (The preamble may MENTION the directive shape as
+    instructional text — we use the ``identifier=`` anchor to detect
+    only real directives.)"""
     text = envelope_to_llm_text(_markdown_envelope())
-    assert ":::artifact" not in text
+    assert ":::artifact{identifier=" not in text
     assert "type=\"markdown\"" not in text
 
 
@@ -173,14 +197,16 @@ def test_markdown_envelope_embeds_raw_inline():
 
 def test_markdown_envelope_preamble_instructs_inline_paste():
     """The preamble on the inline path must tell the LLM to paste the
-    snippet inline, not wrap it in an artifact directive."""
+    snippet inline, cite as `[N](URL)`, and add inline supporting
+    diagrams."""
     text = envelope_to_llm_text(_markdown_envelope())
     assert text.startswith("ACTION REQUIRED")
-    # Must NOT say "copy the :::artifact block"
-    assert "copy the :::artifact" not in text
-    # Must mention inline embedding and numbered citation markers
-    assert "inline" in text.lower()
-    assert "[1]" in text
+    assert "PASTE THE SNIPPET INLINE" in text
+    assert "Copy the Markdown snippet" in text
+    assert "CITE SOURCES AS CLICKABLE INLINE LINKS" in text
+    assert "ADD INLINE SUPPORTING DIAGRAMS" in text
+    # Citation format hint must be present on the inline path too
+    assert "[N](URL)" in text or "`[N](URL)`" in text
 
 
 def test_markdown_envelope_includes_sources_footer():
@@ -248,55 +274,66 @@ def _citation_layer_envelope(
     }
 
 
-def test_citation_layer_renders_numbered_references_block():
+def test_citation_layer_renders_sources_block_with_inline_link_tokens():
     """When the envelope carries a citation_layer, the LLM text must
-    include a numbered ``## References`` section with clickable markdown
-    links — that's how we get inline clickable citations."""
+    include a ``## Sources`` section listing each citation as a
+    self-contained ``[N](URL)`` inline markdown link token. This is the
+    paste-friendly format that unlocks clickable inline citations: the
+    LLM copies the literal token verbatim into its prose."""
     text = envelope_to_llm_text(_citation_layer_envelope())
-    assert "## References" in text
-    # Numbered clickable entries
-    assert "[1] [Pembrolizumab in NSCLC](https://pubmed.ncbi.nlm.nih.gov/12345678/)" in text
-    assert "[2] [NCT01234567](https://clinicaltrials.gov/study/NCT01234567)" in text
+    assert "## Sources" in text
+    # Each entry must be a self-contained inline markdown link token,
+    # ready to paste verbatim into the LLM's prose.
+    assert "[1](https://pubmed.ncbi.nlm.nih.gov/12345678/)" in text
+    assert "[2](https://clinicaltrials.gov/study/NCT01234567)" in text
+    # The descriptive trailer makes the source identifiable.
+    assert "Pembrolizumab in NSCLC" in text
+    assert "PubMed" in text
 
 
-def test_citation_layer_emits_link_reference_footer_for_auto_linking():
-    """Each reference must also appear as a markdown link reference
-    (``[n]: url``) so bare ``[n]`` tokens in the LLM's commentary
-    auto-link without the LLM needing to emit full markdown links."""
+def test_citation_layer_includes_paste_instruction():
+    """The ``## Sources`` section must include a how-to-cite instruction
+    line so the LLM understands the entries are paste-ready tokens —
+    not just a citation list to ignore."""
     text = envelope_to_llm_text(_citation_layer_envelope())
-    assert "[1]: https://pubmed.ncbi.nlm.nih.gov/12345678/" in text
-    assert "[2]: https://clinicaltrials.gov/study/NCT01234567" in text
+    # Instruction must explain the paste-verbatim contract
+    assert "VERBATIM" in text
+    assert "[N](URL)" in text or "`[N](URL)`" in text
+    # And explicitly forbid the academic compound style and bare brackets
+    assert "[1, 2]" in text  # the DON'T example in the section
+    assert "bare-number" in text or "not clickable" in text
 
 
-def test_citation_layer_references_appear_between_artifact_and_sources():
-    """Order: artifact block → (optional glossary) → ## References →
-    link-ref footer → Sources: footer. This keeps the inline refs visible
-    to the LLM AFTER the artifact and BEFORE the one-line Sources bag."""
+def test_citation_layer_sources_appear_between_artifact_and_footer():
+    """Order: artifact block → (optional glossary) → ## Sources →
+    legacy Sources: footer. This keeps the paste-friendly inline-link
+    tokens visible to the LLM AFTER the artifact and BEFORE the legacy
+    one-line ``Sources:`` bag."""
     text = envelope_to_llm_text(_citation_layer_envelope(artifact_type="html"))
     artifact_end = text.index(":::\n")  # first closing fence after artifact
-    refs_idx = text.index("## References")
-    sources_idx = text.index("Sources:")
-    assert artifact_end < refs_idx < sources_idx
+    sources_section_idx = text.index("## Sources")
+    legacy_footer_idx = text.index("Sources:")
+    assert artifact_end < sources_section_idx < legacy_footer_idx
 
 
 def test_citation_layer_skipped_when_references_empty():
-    """No references → no ``## References`` section."""
+    """No references → no ``## Sources`` section."""
     env = _citation_layer_envelope(references=[])
     # Without any references, attach_citation_layer wouldn't attach the
     # layer at all, but defend against a partial attach just in case.
     env["citation_layer"] = {"references": []}
     text = envelope_to_llm_text(env)
-    assert "## References" not in text
+    assert "## Sources" not in text
 
 
 def test_citation_layer_skipped_when_not_attached():
-    """No citation_layer key → no ``## References`` section. This is the
+    """No citation_layer key → no ``## Sources`` section. This is the
     baseline behavior — only tools that pass citations through
-    ``attach_citation_layer`` get the inline references block."""
+    ``attach_citation_layer`` get the inline-link tokens block."""
     env = _citation_layer_envelope()
     del env["citation_layer"]
     text = envelope_to_llm_text(env)
-    assert "## References" not in text
+    assert "## Sources" not in text
 
 
 def test_citation_layer_drops_references_missing_url():
@@ -321,24 +358,26 @@ def test_citation_layer_drops_references_missing_url():
     )
     text = envelope_to_llm_text(env)
     assert "No URL reference" not in text
-    assert "[2] [Has URL](https://pubmed.ncbi.nlm.nih.gov/12345/)" in text
+    assert "[2](https://pubmed.ncbi.nlm.nih.gov/12345/)" in text
 
 
 def test_citation_layer_works_with_inline_markdown_envelope():
-    """The inline-markdown path must also render the references block
+    """The inline-markdown path must also render the sources block
     so compact recipes benefit from clickable citations."""
     text = envelope_to_llm_text(_citation_layer_envelope(artifact_type="markdown"))
-    assert "## References" in text
-    assert "[1]:" in text
+    assert "## Sources" in text
+    assert "[1](https://pubmed.ncbi.nlm.nih.gov/12345678/)" in text
 
 
 # --- Mermaid artifact path --------------------------------------------------
 
 
 def test_mermaid_envelope_emits_artifact_block_without_code_fence():
-    """Mermaid artifacts must NOT be wrapped in a ```mermaid fence inside the
-    directive body — the type declaration in the opening tag already declares
-    the content type."""
+    """Mermaid artifacts must NOT be wrapped in a ``` ```mermaid ``` fence
+    inside the directive body — the type declaration in the opening tag
+    already declares the content type. We check the directive body
+    explicitly because the preamble may MENTION the ``` ```mermaid ``` fence
+    syntax as part of the inline-diagram instructions."""
     env = {
         "render_hint": "MUST: …cite sources… no forward-looking statements.",
         "ui": {
@@ -355,10 +394,16 @@ def test_mermaid_envelope_emits_artifact_block_without_code_fence():
     }
     text = envelope_to_llm_text(env)
     assert text.startswith("ACTION REQUIRED")
-    assert ":::artifact{" in text
+    assert ":::artifact{identifier=" in text
     assert 'type="mermaid"' in text
     assert "gantt\n    dateFormat" in text
-    assert "```mermaid" not in text
+    # Extract the directive body and assert no fence inside it. Using
+    # the identifier= anchor avoids matching the preamble's instructional
+    # text about ```mermaid fences for inline diagrams.
+    directive_start = text.index(':::artifact{identifier=')
+    directive_end = text.index("\n:::", directive_start) + len("\n:::")
+    directive = text[directive_start:directive_end]
+    assert "```mermaid" not in directive
 
 
 # --- Text-only / SKIP path (now dead — raises ValueError) ------------------
@@ -614,16 +659,16 @@ def test_envelope_to_llm_text_glossary_truncates_long_definitions():
 # --- End-to-end: Citation → attach_citation_layer → LLM text --------------
 
 
-def test_end_to_end_citations_produce_inline_numbered_references():
+def test_end_to_end_citations_produce_clickable_inline_link_tokens():
     """Full pipeline smoke test: feed real ``Citation`` models through
     ``attach_citation_layer`` on an envelope returned by
-    ``build_response`` and assert the LLM-facing text carries the inline
-    numbered references block with clickable markdown links.
+    ``build_response`` and assert the LLM-facing text carries the
+    paste-friendly ``[N](URL)`` inline link tokens.
 
     This is the regression gate for the "clickable numbered references"
     problem — if any future refactor breaks the wiring between
     ``attach_citation_layer`` and ``envelope_to_llm_text``, this test
-    fires before the LLM ever sees a references-less tool result.
+    fires before the LLM ever sees a sources-less tool result.
     """
     envelope = build_response(
         tool_name="get_target_context",
@@ -666,21 +711,18 @@ def test_end_to_end_citations_produce_inline_numbered_references():
     assert "citation_layer" in enriched
     assert len(enriched["citation_layer"]["references"]) == 2
 
-    # The rendered text must contain the numbered References block
-    assert "## References" in text
-    assert "[1]" in text
-    assert "[2]" in text
-    # Both references must render as clickable markdown links
-    assert "https://platform.opentargets.org/disease/EFO_0000756" in text
-    assert "https://pubmed.ncbi.nlm.nih.gov/12345678/" in text
-    # Both references must appear in the link-reference footer too
-    assert "[1]: https://platform.opentargets.org/disease/EFO_0000756" in text
-    assert "[2]: https://pubmed.ncbi.nlm.nih.gov/12345678/" in text
+    # The rendered text must contain the ## Sources section with
+    # paste-friendly inline link tokens.
+    assert "## Sources" in text
+    # Each citation must render as a self-contained `[N](URL)` token
+    # the LLM can copy verbatim into its prose.
+    assert "[1](https://platform.opentargets.org/disease/EFO_0000756)" in text
+    assert "[2](https://pubmed.ncbi.nlm.nih.gov/12345678/)" in text
 
 
-def test_end_to_end_no_citations_means_no_references_block():
+def test_end_to_end_no_citations_means_no_sources_block():
     """Baseline regression: tools that don't pass citations through
-    ``attach_citation_layer`` must not produce a ``## References`` block
+    ``attach_citation_layer`` must not produce a ``## Sources`` block
     (falling back to the one-line ``Sources:`` footer only)."""
     envelope = build_response(
         tool_name="get_target_context",
@@ -696,14 +738,14 @@ def test_end_to_end_no_citations_means_no_references_block():
     # NO attach_citation_layer call — simulating a tool that didn't
     # forward its Citation objects.
     text = envelope_to_llm_text(envelope)
-    assert "## References" not in text
+    assert "## Sources" not in text
 
 
 def test_end_to_end_inline_markdown_recipe_end_to_end():
     """End-to-end: a concept-card fallback runs through build_response
     → attach_citation_layer → envelope_to_llm_text and produces an
-    inline-markdown body (not a ``:::artifact`` block) plus the numbered
-    references section."""
+    inline-markdown body (not a ``:::artifact`` directive block) plus
+    the inline-link sources section."""
     envelope = build_response(
         tool_name="resolve_disease",  # unknown → fallback dispatcher
         data={"query": "what is RECIST 1.1"},
@@ -727,11 +769,10 @@ def test_end_to_end_inline_markdown_recipe_end_to_end():
     enriched = attach_citation_layer(envelope, citations)
     text = envelope_to_llm_text(enriched)
 
-    # Inline markdown path: no :::artifact{ wrapping
-    assert ":::artifact" not in text
+    # Inline markdown path: no real artifact directive wrapping
+    assert ":::artifact{identifier=" not in text
     # But the body must still be visible inline
     assert envelope["ui"]["raw"] in text
-    # References block must still render
-    assert "## References" in text
-    assert "[1]" in text
-    assert "https://pubmed.ncbi.nlm.nih.gov/9060828/" in text
+    # Sources block with the inline-link token format must still render
+    assert "## Sources" in text
+    assert "[1](https://pubmed.ncbi.nlm.nih.gov/9060828/)" in text

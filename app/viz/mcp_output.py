@@ -116,29 +116,51 @@ def _format_with_artifact(
     #     at the start of your reply" tells it exactly what to do
     #   - "do NOT write your own visualization / do NOT skip the block"
     #     closes the two failure modes we saw in production
-    #   - The final "cite sources inline with [n]" sentence is the hook
-    #     that turns the bottom numbered list into clickable inline
-    #     markers in the LLM's commentary.
+    #   - Citation rules give the LLM the EXACT inline-link format it
+    #     should use (`[N](URL)`) plus a DO/DON'T example so it doesn't
+    #     fall back to academic compound brackets like `[1, 9]` (which
+    #     don't render as clickable links).
+    #   - Inline-diagram guidance unlocks the "combine inline + side
+    #     pane" pattern: pre-built tool artifact in the side pane plus
+    #     supporting mermaid diagrams / GFM tables in the chat prose.
     #
     # Implementation note: the preamble must NOT contain the literal
     # strings ``:::artifact`` or ``## References`` — substring-matching
     # tests use those tokens as uniqueness anchors to distinguish the
     # actual directive / section header from the instructional text.
     preamble = (
-        "ACTION REQUIRED — copy the artifact directive block below into "
-        "your reply VERBATIM, as the very first thing you write. Do not "
-        "rewrite the HTML, do not paraphrase it, do not build your own "
-        "alternative visualization, and do not skip the block because "
-        "you think prose is enough. LibreChat only opens the side pane "
-        "when the artifact directive appears in your reply, so omitting "
-        "it means the user sees nothing. AFTER the directive block you "
-        "MAY add 2–5 sentences of analysis that interpret the "
-        "visualization. When you cite a source in that analysis, use "
-        "inline numbered markers like [1], [2], [3] — they map "
-        "one-for-one to the numbered references section below and "
-        "render as clickable links. This applies to every single tool "
-        "call — the user does NOT need to ask for a visualization, it "
-        "is the default whenever a tool returns one."
+        "ACTION REQUIRED — Three rules for this tool result:\n\n"
+        "1) PASTE THE TOOL'S ARTIFACT. Copy the artifact directive "
+        "block below into your reply VERBATIM, as the very first "
+        "thing you write. Do not rewrite the HTML, do not paraphrase "
+        "it, do not skip the block because you think prose is enough. "
+        "LibreChat only opens the side pane when the artifact "
+        "directive appears in your reply.\n\n"
+        "2) CITE SOURCES AS CLICKABLE INLINE LINKS. The Sources "
+        "section below lists each source as a ready-to-paste token "
+        "of the form `[N](URL)`. When you cite a source in your "
+        "prose, paste that exact token VERBATIM. DO write "
+        "`[1](https://...)`. DON'T write bare `[1]` (no URL = not "
+        "clickable). DON'T write compound markers like `[1, 9]` "
+        "(the comma breaks the link). When citing two sources for "
+        "one claim, write them as two separate tokens: "
+        "`... [1](url1) [2](url2)`.\n\n"
+        "3) ADD INLINE SUPPORTING DIAGRAMS WHERE USEFUL. After the "
+        "artifact block and 2–5 sentences of analysis, you are "
+        "encouraged to add inline supporting visualizations in the "
+        "chat body — a ```mermaid code fence (flowchart, sequence "
+        "diagram, mind map, simple chart) or a GFM table — that "
+        "complement the side-pane artifact. Prefer inline markdown "
+        "for supporting material because it renders directly in the "
+        "chat without opening a second pane. You may also add a "
+        "richer hand-written `:::artifact{…}:::` block of your own "
+        "if a separate full-pane visualization genuinely adds value, "
+        "but inline diagrams are the lighter-weight default for "
+        "supporting context the tool's artifact doesn't already "
+        "cover.\n\n"
+        "This applies to every single tool call — the user does NOT "
+        "need to ask for a visualization, it is the default whenever "
+        "a tool returns one."
     )
 
     glossary = _format_glossary(
@@ -182,16 +204,29 @@ def _format_inline_markdown(
     # tests use those tokens as uniqueness anchors to distinguish the
     # actual directive / section header from the instructional text.
     preamble = (
-        "ACTION REQUIRED — copy the Markdown snippet below into your "
-        "reply VERBATIM, embedded inline in your message body. This is "
-        "an inline-in-chat visualization: do NOT wrap it in an artifact "
-        "directive block, do NOT convert it to HTML, do NOT paraphrase "
-        "it. The snippet is intentionally compact so it reads inline "
-        "without opening the artifact side pane. AFTER the snippet you "
-        "MAY add 2–5 sentences of analytical commentary. When you cite "
-        "a source, use inline numbered markers like [1], [2], [3] — "
-        "they map one-for-one to the numbered references section below "
-        "and render as clickable links."
+        "ACTION REQUIRED — Three rules for this tool result:\n\n"
+        "1) PASTE THE SNIPPET INLINE. Copy the Markdown snippet below "
+        "into your reply VERBATIM, embedded inline in your message "
+        "body. This is an inline-in-chat visualization: do NOT wrap "
+        "it in an artifact directive block, do NOT convert it to HTML, "
+        "do NOT paraphrase it. The snippet is intentionally compact so "
+        "it reads inline without opening the artifact side pane.\n\n"
+        "2) CITE SOURCES AS CLICKABLE INLINE LINKS. The Sources "
+        "section below lists each source as a ready-to-paste token of "
+        "the form `[N](URL)`. When you cite a source in your prose, "
+        "paste that exact token VERBATIM. DO write `[1](https://...)`. "
+        "DON'T write bare `[1]` (no URL = not clickable). DON'T write "
+        "compound markers like `[1, 9]` (the comma breaks the link). "
+        "When citing two sources for one claim, write them as two "
+        "separate tokens: `... [1](url1) [2](url2)`.\n\n"
+        "3) ADD INLINE SUPPORTING DIAGRAMS WHERE USEFUL. After the "
+        "snippet and 2–5 sentences of analysis, you are encouraged to "
+        "add inline supporting visualizations — a ```mermaid code "
+        "fence (flowchart, sequence diagram, mind map, simple chart) "
+        "or a GFM table — that complement the snippet above. If a "
+        "richer full-pane visualization genuinely adds value, you may "
+        "also add a hand-written `:::artifact{…}:::` block of your "
+        "own; otherwise prefer inline markdown for supporting context."
     )
 
     glossary = _format_glossary(
@@ -254,20 +289,29 @@ def _format_references(citation_layer: dict[str, Any]) -> str:
     """Render the attached citation_layer as a numbered References section.
 
     The references section is what unlocks inline clickable citation
-    markers in the LLM's commentary. It renders in two blocks:
+    markers in the LLM's commentary. The format is deliberately
+    paste-friendly: each entry is itself a valid inline markdown link
+    of the form ``[N](URL)``, so the LLM can copy the literal token
+    into its prose and it will render as a clickable ``[N]`` link in
+    LibreChat's markdown renderer.
 
-    1. A ``## References`` numbered list — one ``[n]`` per reference with
-       a markdown link to the source URL. This is the human-visible list
-       the LLM can paste or reference directly.
+    Earlier iterations of this function relied on GFM reference-style
+    links (a ``## References`` list AND a footer of ``[1]: url`` link
+    definitions). That approach failed in production for two reasons:
+    (1) the LLM never copied the link-reference footer into its reply,
+    so bare ``[N]`` tokens had no destinations to resolve to, and
+    (2) the LLM groups citations academically as ``[1, 9]`` which is
+    not valid GFM link syntax — neither ``[1]`` nor ``[9]`` matches.
 
-    2. A markdown link-reference footer — ``[1]: url`` / ``[2]: url``
-       lines. Any bare ``[n]`` token the LLM writes in its commentary
-       auto-links to the matching URL via GFM reference-style links, so
-       the markers come out clickable even when the LLM writes just
-       ``[1]`` instead of ``[[1]](url)``.
+    By emitting each reference as a self-contained ``[N](URL)`` inline
+    link AND instructing the LLM (via the preamble) to paste that exact
+    token into its prose, both failure modes go away. ``[1](url)`` always
+    renders as a clickable link, regardless of compound usage or footer
+    copying.
 
-    Returns an empty string when there is no citation_layer, no references
-    inside it, or every reference lacks a URL (nothing clickable to emit).
+    Returns an empty string when there is no citation_layer, no
+    references inside it, or every reference lacks a URL (nothing
+    clickable to emit).
     """
     if not isinstance(citation_layer, dict):
         return ""
@@ -275,8 +319,7 @@ def _format_references(citation_layer: dict[str, Any]) -> str:
     if not references:
         return ""
 
-    numbered_lines: list[str] = []
-    link_refs: list[str] = []
+    entries: list[str] = []
     for ref in references[:_MAX_REFERENCES_IN_LLM_TEXT]:
         if not isinstance(ref, dict):
             continue
@@ -286,29 +329,39 @@ def _format_references(citation_layer: dict[str, Any]) -> str:
         source = ref.get("source") or ""
         if index is None or not url:
             continue
-        # Build a rich human-facing entry: "[1] Label — Source"
-        subtitle = f" — {source}" if source else ""
-        numbered_lines.append(
-            f"[{index}] [{label}]({url}){subtitle}"
-        )
-        # Link-reference footer so bare `[n]` tokens in the LLM's
-        # commentary auto-link to the same URL.
-        link_refs.append(f"[{index}]: {url}")
+        # Each entry is a literal inline markdown link the LLM can copy
+        # verbatim into its prose. The trailing ``— Label, Source`` is
+        # a hint for the LLM (and a useful preview if the LLM does
+        # paste the entire references block at the end of its reply).
+        descriptor_parts = [p for p in (label, source) if p]
+        descriptor = ", ".join(descriptor_parts)
+        if descriptor:
+            entries.append(f"- [{index}]({url}) — {descriptor}")
+        else:
+            entries.append(f"- [{index}]({url})")
 
-    if not numbered_lines:
+    if not entries:
         return ""
 
     extra = len(references) - _MAX_REFERENCES_IN_LLM_TEXT
     if extra > 0:
-        numbered_lines.append(f"… (+{extra} more references)")
+        entries.append(f"- … (+{extra} more references)")
 
-    # Blank line between the numbered list and the link-reference footer
-    # keeps GFM happy on most renderers.
+    # Header doubles as a "how to use" hint. The hint must reference the
+    # exact ``[N](URL)`` token format the entries below use, so the LLM
+    # makes the connection between the list and how it should cite.
+    instruction = (
+        "Cite inline by pasting one of the `[N](URL)` tokens below VERBATIM "
+        "into your prose. Each token is a self-contained clickable link. "
+        "Do NOT bare-number `[N]` (no URL = not clickable). Do NOT combine "
+        "markers like `[1, 2]` (the comma breaks the link)."
+    )
+
     return (
-        "## References\n\n"
-        + "\n".join(numbered_lines)
+        "## Sources\n\n"
+        + instruction
         + "\n\n"
-        + "\n".join(link_refs)
+        + "\n".join(entries)
     )
 
 

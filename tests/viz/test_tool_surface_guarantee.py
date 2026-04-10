@@ -115,7 +115,7 @@ async def test_every_tool_returns_artifact(
     )
     has_artifact_directive = ":::artifact{identifier=" in result
     has_inline_markdown_body = (
-        "copy the Markdown snippet" in result and "### " in result
+        "Copy the Markdown snippet" in result and "### " in result
     )
     assert has_artifact_directive or has_inline_markdown_body, (
         f"Tool '{tool_name}' output missing both an artifact directive "
