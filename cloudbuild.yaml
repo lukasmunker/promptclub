@@ -1,0 +1,47 @@
+steps:
+  # Step 1: Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - build
+      - -t
+      - us-central1-docker.pkg.dev/ai-hack26ham-402/promptclub/clinical-intel-mcp:$COMMIT_SHA
+      - -t
+      - us-central1-docker.pkg.dev/ai-hack26ham-402/promptclub/clinical-intel-mcp:latest
+      - .
+
+  # Step 2: Push both tags to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - push
+      - --all-tags
+      - us-central1-docker.pkg.dev/ai-hack26ham-402/promptclub/clinical-intel-mcp
+
+  # Step 3: Deploy to Cloud Run
+  # NOTE: After first deploy, add PUBLIC_BASE_URL to --set-env-vars below.
+  # Get URL with: gcloud run services describe clinical-intel-mcp --region=us-central1 --format='value(status.url)'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - clinical-intel-mcp
+      - --image=us-central1-docker.pkg.dev/ai-hack26ham-402/promptclub/clinical-intel-mcp:$COMMIT_SHA
+      - --region=us-central1
+      - --platform=managed
+      - --allow-unauthenticated
+      - --memory=1Gi
+      - --cpu=1
+      - --concurrency=80
+      - --min-instances=0
+      - --max-instances=3
+      - --timeout=60
+      - --set-env-vars=APP_ENV=production,LOG_LEVEL=INFO,GOOGLE_CLOUD_LOCATION=us-central1,GOOGLE_GENAI_USE_VERTEXAI=true,ENABLE_VERTEX_WEB_SEARCH=true
+      - --set-secrets=GOOGLE_CLOUD_PROJECT=GOOGLE_CLOUD_PROJECT:latest
+      - --service-account=clinical-intel-mcp-sa@ai-hack26ham-402.iam.gserviceaccount.com
+
+images:
+  - us-central1-docker.pkg.dev/ai-hack26ham-402/promptclub/clinical-intel-mcp:$COMMIT_SHA
+  - us-central1-docker.pkg.dev/ai-hack26ham-402/promptclub/clinical-intel-mcp:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY
