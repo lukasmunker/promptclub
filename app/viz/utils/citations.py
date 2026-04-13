@@ -3,7 +3,7 @@
 Every pharmafuse-mcp viz recipe embeds a 1-line citation footer directly into its
 rendered output so viewers see "where did this data come from?" inline with
 the visualization itself — independent of whatever the LLM adds in
-surrounding prose. This supports the BioNTech challenge's "Source citation
+surrounding prose. This supports the [Company] challenge's "Source citation
 and transparency" bonus-point criterion.
 
 The helpers here are deliberately format-agnostic: they take a list of

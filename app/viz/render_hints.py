@@ -23,7 +23,7 @@ HTML = (
     "artifact block you MAY add 2–5 sentences of analysis, but the artifact "
     "itself is non-optional — do not write a prose-only answer that omits "
     "the visualization. Cite sources from the 'sources' field in your chat "
-    "text. No forward-looking statements, no BioNTech strategic "
+    "text. No forward-looking statements, no [Company] strategic "
     "recommendations."
 )
 

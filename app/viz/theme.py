@@ -4,7 +4,7 @@ Centralizes the Tailwind class vocabulary + hex palette every HTML recipe
 uses, so brand tweaks happen in one place instead of being scattered across
 seven files.
 
-Current palette (April 2026): **BioNtech brand colors**.
+Current palette (April 2026): **[Company] brand colors**.
 
   Primary  : ``#179E75``  dark teal-green — main text, solid bar fills,
                          NCT badges, status pills, primary borders
@@ -37,7 +37,7 @@ from __future__ import annotations
 
 
 PRIMARY_HEX = "#179E75"
-"""BioNtech brand primary: dark teal-green."""
+"""[Company] brand primary: dark teal-green."""
 
 PRIMARY_DARK_HEX = "#0d7a5a"
 """Darker shade of primary, for hover states / donut slices."""
@@ -46,7 +46,7 @@ PRIMARY_DARKER_HEX = "#064d36"
 """Deepest green for contrast text on light backgrounds."""
 
 SECONDARY_HEX = "#99D11E"
-"""BioNtech brand secondary: bright lime."""
+"""[Company] brand secondary: bright lime."""
 
 SECONDARY_DARK_HEX = "#6fa312"
 """Darker lime for hover / secondary text (still readable on white)."""
@@ -67,7 +67,7 @@ CARD_WRAPPER = (
 )
 """Outer ``<div>`` class for every HTML recipe. Combines the
 ``pharmafuse-card`` hook class (used by the scoped style block below)
-with Tailwind utilities. The ring uses the BioNtech primary at 20%
+with Tailwind utilities. The ring uses the [Company] primary at 20%
 alpha for a subtle branded border.
 
 Every HTML recipe's outermost div uses this class — append
@@ -92,7 +92,7 @@ light background regardless of what LibreChat does around the artifact."""
 
 TITLE_STYLE_INLINE = "color:#064d36 !important;"
 """Inline ``style`` for the primary title ``<h2>`` in each recipe.
-Matches the darkest BioNtech green so the title is readable on the
+Matches the darkest [Company] green so the title is readable on the
 forced-white card background."""
 
 
@@ -282,7 +282,7 @@ LINK_SUBTLE = "text-xs text-[#179E75] hover:underline"
 
 
 HEADER_BORDER = "border-b border-[#179E75]/20"
-"""Bottom border under a recipe's <header> element, BioNtech primary at
+"""Bottom border under a recipe's <header> element, [Company] primary at
 20% alpha — subtle but on-brand."""
 
 
@@ -328,7 +328,7 @@ MERMAID_THEME_DIRECTIVE = (
     f"'gridColor':'{SECONDARY_LIGHT_HEX}'"
     "}}}%%"
 )
-"""Mermaid init directive that rebrands the gantt chart with the BioNtech
+"""Mermaid init directive that rebrands the gantt chart with the [Company]
 palette. Prepended as the first line of every mermaid ``raw`` string so
 the chart matches the HTML recipes visually."""
 

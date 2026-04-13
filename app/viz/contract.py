@@ -207,6 +207,6 @@ class Envelope(BaseModel):
         if "no forward-looking" not in lower:
             raise ValueError(
                 "render_hint must contain 'No forward-looking' to enforce the "
-                "BioNTech challenge's no-speculation rule."
+                "[Company] challenge's no-speculation rule."
             )
         return v
