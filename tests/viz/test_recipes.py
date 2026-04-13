@@ -133,7 +133,7 @@ def test_timeline_gantt_basic(compare_trials_three):
     assert payload.artifact.type == "mermaid"
     # Starts with the Pharmafuse Mermaid theme init directive, then gantt
     assert payload.raw.startswith("%%{init:")
-    # BioNtech brand primary appears in the init block
+    # [Company] brand primary appears in the init block
     assert "#179E75" in payload.raw
     assert "\ngantt\n" in payload.raw
     assert "```mermaid" not in payload.raw  # no code fence wrapping
@@ -228,7 +228,7 @@ def test_indication_dashboard_basic(indication_landscape_nsclc):
     assert payload.raw is not None
     assert payload.blueprint is None
     assert payload.components is None
-    # Page container + header present (the BioNtech-themed CARD_WRAPPER
+    # Page container + header present (the [Company]-themed CARD_WRAPPER
     # forces an explicit bg-white so the artifact renders on a light
     # background regardless of LibreChat's dark-mode chrome).
     assert "bg-white" in payload.raw

@@ -188,7 +188,7 @@ COMPLIANCE
   the Sources section under each tool result.
 - No forward-looking investment, regulatory, or clinical-outcome
   predictions.
-- No BioNTech strategic recommendations.
+- No [Company] strategic recommendations.
 """,
 )
 
@@ -208,7 +208,7 @@ async def search_trials(
     USE THIS WHEN: The user asks to find, list, or browse trials for a disease, drug, or sponsor.
     Supports optional filters:
       - phase: "1", "2", "3", "phase 3", "PHASE2" (all formats accepted)
-      - sponsor: partial sponsor name, e.g. "BioNTech", "Merck"
+      - sponsor: partial sponsor name, e.g. "[Company]", "Merck"
       - status: "recruiting", "completed", "active", "not_yet_recruiting", etc.
       - page_size: number of results (default 5, max ~100)
 

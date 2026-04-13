@@ -366,13 +366,13 @@ def test_target_context_single_association_skips():
 def test_web_context_envelope():
     rows = [
         WebContextRecord(
-            answer="Recent news about BioNTech's mRNA melanoma trial...",
+            answer="Recent news about [Company]'s mRNA melanoma trial...",
             citations=[
                 Citation(
                     source="Vertex Google Search",
                     id="w1",
                     url="https://example.com/news-1",
-                    title="BioNTech mRNA trial news",
+                    title="[Company] mRNA trial news",
                 )
             ],
         ),
@@ -391,7 +391,7 @@ def test_web_context_envelope():
     env = build_response_from_promptclub(
         tool_name="web_context_search",
         promptclub_data={"count": 2, "results": [r.model_dump() for r in rows]},
-        query="melanoma BioNTech",
+        query="melanoma [Company]",
     )
     assert env["ui"]["recipe"] == "trial_search_results"
     assert env["ui"]["artifact"]["type"] == "html"
